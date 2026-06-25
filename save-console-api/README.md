@@ -7,19 +7,31 @@ Current scope:
 - health check
 - current user endpoint
 - world list
+- admin-only world creation
 - world detail
 - version history
 - raw zip upload endpoint
 - latest archive download endpoint
 - historical archive download endpoint
 
-The current implementation supports manual zip upload and direct archive download.
+The current implementation supports multi-world management, manual zip upload, and direct archive download.
 
 ## Run locally
 
 ```bash
 node ./src/server.mjs
 ```
+
+## Smoke test
+
+The smoke test uses a temporary data directory and does not touch real saves.
+
+```bash
+pnpm save-console:test
+```
+
+It covers world creation, duplicate and invalid slug rejection, ZIP signature
+validation, upload metadata, and download round-tripping.
 
 ## Environment variables
 

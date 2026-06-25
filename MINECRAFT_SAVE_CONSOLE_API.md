@@ -19,6 +19,7 @@ Current implementation status:
 
 - `GET /api/saves/me`: implemented
 - `GET /api/saves/worlds`: implemented
+- `POST /api/saves/worlds`: implemented for administrators
 - `GET /api/saves/worlds/:slug`: implemented
 - `GET /api/saves/worlds/:slug/versions`: implemented
 - `POST /api/saves/worlds/:slug/upload`: implemented with raw zip body upload
@@ -269,16 +270,20 @@ Request type:
 Required headers:
 
 - `Content-Type: application/zip` or `application/octet-stream`
-- `X-Save-Filename: <name>.zip`
+- `X-Save-Filename-Encoded: <encodeURIComponent(name.zip)>`
 
 Optional headers:
 
-- `X-Save-Note: <free text>`
+- `X-Save-Note-Encoded: <encodeURIComponent(free text)>`
+
+The unencoded `X-Save-Filename` and `X-Save-Note` headers remain supported for
+ASCII-only clients.
 
 Behavior:
 
 - validate world access
 - validate file extension and size
+- validate the ZIP file signature
 - write upload to a temporary path
 - compute hash
 - assign version ID

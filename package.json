@@ -12,7 +12,8 @@
     "astro": "astro",
     "deploy": "powershell -ExecutionPolicy Bypass -File .\\deploy.ps1",
     "save-console:dev": "node ./save-console-api/src/server.mjs",
-    "save-console:start": "node ./save-console-api/src/server.mjs"
+    "save-console:start": "node ./save-console-api/src/server.mjs",
+    "save-console:test": "node ./save-console-api/test/smoke.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^7.0.0",

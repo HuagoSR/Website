@@ -5,9 +5,11 @@ import crypto from 'node:crypto';
 import { URL } from 'node:url';
 import { loadConfig } from './config.mjs';
 import {
+	createWorld,
 	createRequestUploadTarget,
 	getDownloadVersion,
 	getVisibleWorld,
+	isValidWorldSlug,
 	listVisibleWorlds,
 	saveUploadedVersion
 } from './storage.mjs';
@@ -34,7 +36,11 @@ function fail(response, statusCode, code, message) {
 }
 
 function escapeHeaderFilename(name) {
-	return encodeURIComponent(name).replace(/['()]/g, escape).replace(/\*/g, '%2A');
+	return encodeURIComponent(name)
+		.replace(/'/g, '%27')
+		.replace(/\(/g, '%28')
+		.replace(/\)/g, '%29')
+		.replace(/\*/g, '%2A');
 }
 
 async function streamArchiveResponse(response, archivePath, filename) {
@@ -59,6 +65,38 @@ function parseOptionalInt(value) {
 	if (!value) return null;
 	const parsed = Number.parseInt(value, 10);
 	return Number.isNaN(parsed) ? null : parsed;
+}
+
+async function readJsonBody(request, maxBytes = 16 * 1024) {
+	const chunks = [];
+	let size = 0;
+
+	for await (const chunk of request) {
+		size += chunk.length;
+		if (size > maxBytes) {
+			throw new Error('request_too_large');
+		}
+		chunks.push(chunk);
+	}
+
+	try {
+		return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+	} catch {
+		throw new Error('invalid_json');
+	}
+}
+
+function decodeHeaderValue(request, encodedName, fallbackName) {
+	const encodedValue = request.headers[encodedName];
+	if (typeof encodedValue === 'string' && encodedValue.trim()) {
+		try {
+			return decodeURIComponent(encodedValue.trim());
+		} catch {
+			return null;
+		}
+	}
+	const fallbackValue = request.headers[fallbackName];
+	return typeof fallbackValue === 'string' && fallbackValue.trim() ? fallbackValue.trim() : null;
 }
 
 async function streamRequestToTempFile(request, tempFilePath, maxUploadBytes) {
@@ -111,6 +149,22 @@ async function streamRequestToTempFile(request, tempFilePath, maxUploadBytes) {
 		size,
 		sha256: hash.digest('hex')
 	};
+}
+
+async function isZipArchive(filePath) {
+	const handle = await fsPromises.open(filePath, 'r');
+	try {
+		const signature = Buffer.alloc(4);
+		const { bytesRead } = await handle.read(signature, 0, signature.length, 0);
+		if (bytesRead < 4) return false;
+		return (
+			signature.equals(Buffer.from([0x50, 0x4b, 0x03, 0x04])) ||
+			signature.equals(Buffer.from([0x50, 0x4b, 0x05, 0x06])) ||
+			signature.equals(Buffer.from([0x50, 0x4b, 0x07, 0x08]))
+		);
+	} finally {
+		await handle.close();
+	}
 }
 
 function getUserId(request) {
@@ -181,6 +235,54 @@ async function routeRequest(request, response) {
 		return ok(response, { worlds });
 	}
 
+	if (method === 'POST' && pathName === `${config.publicBase}/worlds`) {
+		if (getUserRole(userId) !== 'admin') {
+			return fail(response, 403, 'forbidden', 'You do not have permission to create worlds.');
+		}
+
+		try {
+			const body = await readJsonBody(request);
+			if (!body || typeof body !== 'object' || Array.isArray(body)) {
+				return fail(response, 400, 'invalid_json', 'The request body must be a JSON object.');
+			}
+			const result = await createWorld(config, userId, {
+				slug: body.slug,
+				displayName: body.displayName,
+				description: body.description,
+				retentionCount: body.retentionCount,
+				allowedUsers: body.allowedUsers
+			});
+
+			if (result.error === 'invalid_slug') {
+				return fail(
+					response,
+					400,
+					'invalid_slug',
+					'World slug must use 1-64 lowercase letters, numbers, hyphens, or underscores.'
+				);
+			}
+			if (result.error === 'invalid_display_name') {
+				return fail(response, 400, 'invalid_display_name', 'World display name is required.');
+			}
+			if (result.error === 'world_already_exists') {
+				return fail(response, 409, 'world_already_exists', 'A world with this slug already exists.');
+			}
+			if (result.error === 'forbidden') {
+				return fail(response, 403, 'forbidden', 'You do not have permission to create worlds.');
+			}
+
+			return json(response, 201, { ok: true, data: result });
+		} catch (error) {
+			if (error instanceof Error && error.message === 'request_too_large') {
+				return fail(response, 413, 'request_too_large', 'The request body is too large.');
+			}
+			if (error instanceof Error && error.message === 'invalid_json') {
+				return fail(response, 400, 'invalid_json', 'The request body must be valid JSON.');
+			}
+			throw error;
+		}
+	}
+
 	const worldMatch = pathName.match(/^\/api\/saves\/worlds\/([^/]+)$/);
 	if (method === 'GET' && worldMatch) {
 		const world = await getVisibleWorld(config, userId, decodeURIComponent(worldMatch[1]));
@@ -231,6 +333,9 @@ async function routeRequest(request, response) {
 	const uploadMatch = pathName.match(/^\/api\/saves\/worlds\/([^/]+)\/upload$/);
 	if (method === 'POST' && uploadMatch) {
 		const slug = decodeURIComponent(uploadMatch[1]);
+		if (!isValidWorldSlug(slug)) {
+			return fail(response, 400, 'invalid_slug', 'The world slug is invalid.');
+		}
 		const world = await getVisibleWorld(config, userId, slug);
 		if (!world) {
 			return fail(response, 404, 'world_not_found', 'The requested world does not exist.');
@@ -249,11 +354,11 @@ async function routeRequest(request, response) {
 			);
 		}
 
-		const sourceFilenameHeader = request.headers['x-save-filename'];
-		const sourceFilename =
-			typeof sourceFilenameHeader === 'string' && sourceFilenameHeader.trim()
-				? sourceFilenameHeader.trim()
-				: null;
+		const sourceFilename = decodeHeaderValue(
+			request,
+			'x-save-filename-encoded',
+			'x-save-filename'
+		);
 		if (!sourceFilename || !sourceFilename.toLowerCase().endsWith('.zip')) {
 			return fail(response, 400, 'invalid_archive', 'A .zip filename is required.');
 		}
@@ -268,9 +373,8 @@ async function routeRequest(request, response) {
 			);
 		}
 
-		const noteHeader = request.headers['x-save-note'];
-		const note =
-			typeof noteHeader === 'string' && noteHeader.trim() ? noteHeader.trim().slice(0, 200) : '';
+		const decodedNote = decodeHeaderValue(request, 'x-save-note-encoded', 'x-save-note');
+		const note = decodedNote ? decodedNote.trim().slice(0, 200) : '';
 		const uploadTarget = createRequestUploadTarget(config, slug);
 
 		try {
@@ -282,6 +386,10 @@ async function routeRequest(request, response) {
 			if (uploadMeta.size === 0) {
 				await fsPromises.rm(uploadTarget.tempFilePath, { force: true }).catch(() => undefined);
 				return fail(response, 400, 'invalid_archive', 'The uploaded archive is empty.');
+			}
+			if (!(await isZipArchive(uploadTarget.tempFilePath))) {
+				await fsPromises.rm(uploadTarget.tempFilePath, { force: true }).catch(() => undefined);
+				return fail(response, 400, 'invalid_archive', 'The uploaded file is not a valid ZIP archive.');
 			}
 
 			const result = await saveUploadedVersion(config, userId, slug, {

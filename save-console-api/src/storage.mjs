@@ -26,8 +26,12 @@ function sortNewestFirst(items) {
 	});
 }
 
-function sanitizeSlug(slug) {
-	return slug.trim().toLowerCase();
+export function normalizeWorldSlug(slug) {
+	return String(slug || '').trim().toLowerCase();
+}
+
+export function isValidWorldSlug(slug) {
+	return /^[a-z0-9][a-z0-9_-]{0,63}$/.test(normalizeWorldSlug(slug));
 }
 
 function sanitizeArchiveBaseName(name) {
@@ -98,6 +102,9 @@ async function loadVersionsFromLegacy(worldDir, latest) {
 }
 
 async function loadWorldRecord(config, slug) {
+	if (!isValidWorldSlug(slug)) {
+		return null;
+	}
 	const worldDir = path.join(config.worldsRoot, slug);
 	const worldJson = await readJsonIfExists(path.join(worldDir, 'world.json'));
 	const latestJson = await readJsonIfExists(path.join(worldDir, 'latest.json'));
@@ -165,7 +172,10 @@ export async function listVisibleWorlds(config, userId) {
 		if (!entry.isDirectory()) {
 			continue;
 		}
-		const slug = sanitizeSlug(entry.name);
+		const slug = normalizeWorldSlug(entry.name);
+		if (!isValidWorldSlug(slug)) {
+			continue;
+		}
 		const world = await loadWorldRecord(config, slug);
 		if (!world) {
 			continue;
@@ -195,7 +205,11 @@ export async function listVisibleWorlds(config, userId) {
 }
 
 export async function getVisibleWorld(config, userId, slug) {
-	const world = await loadWorldRecord(config, sanitizeSlug(slug));
+	const normalizedSlug = normalizeWorldSlug(slug);
+	if (!isValidWorldSlug(normalizedSlug)) {
+		return null;
+	}
+	const world = await loadWorldRecord(config, normalizedSlug);
 	if (!world) {
 		return null;
 	}
@@ -203,6 +217,78 @@ export async function getVisibleWorld(config, userId, slug) {
 		return null;
 	}
 	return world;
+}
+
+export async function createWorld(
+	config,
+	userId,
+	{ slug, displayName, description = '', retentionCount = 20, allowedUsers = [] }
+) {
+	if (userId !== config.defaultOwner) {
+		return { error: 'forbidden' };
+	}
+
+	const normalizedSlug = normalizeWorldSlug(slug);
+	if (!isValidWorldSlug(normalizedSlug)) {
+		return { error: 'invalid_slug' };
+	}
+
+	const normalizedDisplayName = String(displayName || '').trim();
+	if (!normalizedDisplayName || normalizedDisplayName.length > 80) {
+		return { error: 'invalid_display_name' };
+	}
+
+	const normalizedDescription = String(description || '').trim().slice(0, 500);
+	const normalizedRetention = Number.isInteger(retentionCount)
+		? Math.min(Math.max(retentionCount, 1), 100)
+		: 20;
+	const normalizedUsers = [...new Set(
+		(Array.isArray(allowedUsers) ? allowedUsers : [])
+			.map((entry) => String(entry || '').trim())
+			.filter(Boolean)
+	)];
+	if (!normalizedUsers.includes(config.defaultOwner)) {
+		normalizedUsers.unshift(config.defaultOwner);
+	}
+
+	await ensureDirectory(config.worldsRoot);
+	const worldDir = path.join(config.worldsRoot, normalizedSlug);
+	try {
+		await fs.mkdir(worldDir);
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'EEXIST') {
+			return { error: 'world_already_exists' };
+		}
+		throw error;
+	}
+
+	const now = new Date().toISOString();
+	const worldRecord = {
+		id: `world_${normalizedSlug}`,
+		slug: normalizedSlug,
+		displayName: normalizedDisplayName,
+		description: normalizedDescription,
+		createdAt: now,
+		updatedAt: now,
+		retentionCount: normalizedRetention,
+		allowedUsers: normalizedUsers,
+		tags: []
+	};
+
+	try {
+		await Promise.all([
+			ensureDirectory(path.join(worldDir, 'versions')),
+			ensureDirectory(path.join(worldDir, 'uploads'))
+		]);
+		await writeJsonAtomic(path.join(worldDir, 'world.json'), worldRecord);
+	} catch (error) {
+		await fs.rm(worldDir, { recursive: true, force: true }).catch(() => undefined);
+		throw error;
+	}
+
+	return {
+		world: await loadWorldRecord(config, normalizedSlug)
+	};
 }
 
 export async function getDownloadVersion(config, userId, slug, versionId = 'latest') {
@@ -331,7 +417,10 @@ export async function saveUploadedVersion(
 }
 
 export function createRequestUploadTarget(config, slug) {
-	const safeSlug = sanitizeSlug(slug);
+	const safeSlug = normalizeWorldSlug(slug);
+	if (!isValidWorldSlug(safeSlug)) {
+		throw new Error('invalid_slug');
+	}
 	const requestId = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
 	const worldDir = path.join(config.worldsRoot, safeSlug);
 	const uploadsDir = path.join(worldDir, 'uploads');

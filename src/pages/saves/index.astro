@@ -2,8 +2,8 @@
 import BaseHead from '../../components/BaseHead.astro';
 import Footer from '../../components/Footer.astro';
 
-const pageTitle = 'Minecraft Saves';
-const pageDescription = 'Protected Minecraft save console';
+const pageTitle = 'Minecraft 云存档';
+const pageDescription = '受保护的 Minecraft 多世界存档控制台';
 ---
 
 <!doctype html>
@@ -13,321 +13,586 @@ const pageDescription = 'Protected Minecraft save console';
 		<style>
 			:global(body) {
 				background:
-					radial-gradient(circle at top left, rgba(140, 171, 125, 0.28), transparent 32%),
-					linear-gradient(180deg, #eef2e8 0%, #f8f5ee 46%, #f6f3ec 100%);
+					linear-gradient(rgba(246, 242, 230, 0.9), rgba(246, 242, 230, 0.96)),
+					repeating-linear-gradient(90deg, transparent 0 31px, rgba(52, 75, 42, 0.035) 31px 32px),
+					#f6f2e6;
 			}
 			:global(main.save-console-page) {
-				width: min(1120px, calc(100% - 2rem));
+				width: min(1180px, calc(100% - 2rem));
 				max-width: none;
-				padding: 2rem 0 4rem;
+				padding: 1.5rem 0 5rem;
 			}
-			.shell {
-				display: grid;
-				grid-template-columns: 320px minmax(0, 1fr);
+			:global(button),
+			:global(input),
+			:global(textarea) {
+				font: inherit;
+			}
+			.topbar {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
 				gap: 1rem;
-				align-items: start;
-			}
-			.panel {
-				background: rgba(255, 253, 248, 0.9);
-				border: 1px solid rgba(var(--gray), 0.16);
-				border-radius: 22px;
-				box-shadow: 0 18px 45px rgba(57, 66, 46, 0.08);
-				backdrop-filter: blur(10px);
-			}
-			.hero {
-				padding: 1.4rem 1.4rem 1.2rem;
 				margin-bottom: 1rem;
 			}
+			.back-link {
+				color: #33452b;
+				text-decoration: none;
+				font-size: 0.92rem;
+			}
+			.session {
+				display: flex;
+				align-items: center;
+				gap: 0.6rem;
+				color: #53604c;
+				font-size: 0.88rem;
+			}
+			.session-dot {
+				width: 0.55rem;
+				height: 0.55rem;
+				border-radius: 50%;
+				background: #72945f;
+				box-shadow: 0 0 0 5px rgba(114, 148, 95, 0.12);
+			}
+			.hero {
+				position: relative;
+				overflow: hidden;
+				padding: clamp(1.6rem, 4vw, 3rem);
+				border-radius: 28px;
+				color: #f7f3e7;
+				background:
+					radial-gradient(circle at 84% 25%, rgba(205, 225, 163, 0.22), transparent 24%),
+					linear-gradient(128deg, #253322 0%, #3d5732 56%, #6a7046 100%);
+				box-shadow: 0 22px 55px rgba(46, 57, 38, 0.18);
+			}
+			.hero::after {
+				content: '';
+				position: absolute;
+				right: -50px;
+				bottom: -80px;
+				width: 310px;
+				height: 230px;
+				background:
+					linear-gradient(30deg, transparent 30%, rgba(255, 255, 255, 0.08) 31% 34%, transparent 35%),
+					linear-gradient(150deg, transparent 30%, rgba(255, 255, 255, 0.06) 31% 34%, transparent 35%);
+				background-size: 62px 52px;
+				transform: rotate(-8deg);
+			}
 			.eyebrow {
+				position: relative;
+				z-index: 1;
 				display: inline-flex;
-				padding: 0.2rem 0.6rem;
+				padding: 0.3rem 0.7rem;
+				border: 1px solid rgba(255, 255, 255, 0.24);
 				border-radius: 999px;
-				background: rgba(84, 105, 61, 0.1);
-				color: #40522c;
-				font-size: 0.78rem;
-				letter-spacing: 0.06em;
+				font-size: 0.72rem;
+				letter-spacing: 0.14em;
 				text-transform: uppercase;
 			}
 			.hero h1 {
-				margin: 0.8rem 0 0.55rem;
-				font-size: clamp(2.1rem, 4vw, 3.4rem);
+				position: relative;
+				z-index: 1;
+				margin: 1rem 0 0.65rem;
+				max-width: 760px;
+				font-family: Georgia, 'Noto Serif SC', serif;
+				font-size: clamp(2.3rem, 6vw, 4.7rem);
+				font-weight: 500;
+				line-height: 0.98;
+				letter-spacing: -0.04em;
 			}
 			.hero p {
-				max-width: 52rem;
+				position: relative;
+				z-index: 1;
+				max-width: 680px;
 				margin: 0;
-				color: rgba(var(--gray-dark), 0.84);
+				color: rgba(247, 243, 231, 0.76);
+				line-height: 1.7;
+			}
+			.workspace {
+				display: grid;
+				grid-template-columns: 310px minmax(0, 1fr);
+				gap: 1rem;
+				margin-top: 1rem;
+				align-items: start;
+			}
+			.panel {
+				border: 1px solid rgba(50, 64, 43, 0.13);
+				border-radius: 22px;
+				background: rgba(255, 253, 247, 0.92);
+				box-shadow: 0 14px 35px rgba(52, 61, 43, 0.07);
+				backdrop-filter: blur(12px);
 			}
 			.sidebar {
+				position: sticky;
+				top: 1rem;
 				padding: 1rem;
 			}
-			.sidebar h2,
-			.content h2 {
-				font-size: 1rem;
-				margin-bottom: 0.75rem;
+			.sidebar-heading {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				gap: 0.75rem;
+				margin: 0.25rem 0 0.9rem;
 			}
-			.user-card {
-				padding: 0.9rem 1rem;
-				border-radius: 16px;
-				background: rgba(35, 55, 255, 0.05);
-				margin-bottom: 1rem;
+			.sidebar-heading h2 {
+				margin: 0;
+				font-size: 0.78rem;
+				letter-spacing: 0.12em;
+				text-transform: uppercase;
+				color: #6a7464;
 			}
-			.user-card strong {
-				display: block;
-				font-size: 0.98rem;
-			}
-			.user-card span {
-				font-size: 0.92rem;
-				color: rgba(var(--gray-dark), 0.8);
+			.icon-button {
+				width: 2rem;
+				height: 2rem;
+				border: 0;
+				border-radius: 50%;
+				background: #e6ebdf;
+				color: #34502d;
+				font-size: 1.15rem;
+				cursor: pointer;
 			}
 			.world-list {
 				display: grid;
-				gap: 0.75rem;
+				gap: 0.6rem;
 			}
 			.world-item {
-				border: 1px solid rgba(var(--gray), 0.14);
-				border-radius: 16px;
-				padding: 0.9rem 1rem;
-				background: white;
+				width: 100%;
+				padding: 0.9rem;
+				border: 1px solid transparent;
+				border-radius: 15px;
+				background: transparent;
+				text-align: left;
 				cursor: pointer;
-				transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+				transition: 150ms ease;
 			}
-			.world-item:hover,
+			.world-item:hover {
+				background: #f3f4ec;
+			}
 			.world-item.active {
-				transform: translateY(-1px);
-				border-color: rgba(67, 106, 57, 0.45);
-				box-shadow: 0 12px 25px rgba(74, 92, 52, 0.08);
+				border-color: rgba(66, 92, 55, 0.2);
+				background: #e8eee2;
 			}
-			.world-item strong {
-				display: block;
-				font-size: 1rem;
-				color: rgb(var(--black));
-			}
+			.world-item strong,
 			.world-item span {
 				display: block;
-				font-size: 0.88rem;
-				color: rgba(var(--gray-dark), 0.76);
+			}
+			.world-item strong {
+				color: #263421;
+				font-size: 0.98rem;
+			}
+			.world-item span {
+				margin-top: 0.25rem;
+				color: #7a8375;
+				font-size: 0.78rem;
+			}
+			.sidebar-note {
+				margin-top: 1rem;
+				padding: 0.9rem;
+				border-top: 1px solid rgba(50, 64, 43, 0.1);
+				color: #737c6e;
+				font-size: 0.78rem;
+				line-height: 1.55;
 			}
 			.content {
-				padding: 1rem;
-			}
-			.state-card,
-			.version-card {
-				padding: 1rem 1.1rem;
-				border-radius: 18px;
-				border: 1px solid rgba(var(--gray), 0.12);
-				background: white;
-			}
-			.state-grid {
-				display: grid;
-				grid-template-columns: repeat(2, minmax(0, 1fr));
-				gap: 0.85rem;
-				margin-bottom: 1rem;
-			}
-			.state-card .label {
-				display: block;
-				font-size: 0.78rem;
-				text-transform: uppercase;
-				letter-spacing: 0.05em;
-				color: rgba(var(--gray-dark), 0.62);
-				margin-bottom: 0.3rem;
-			}
-			.state-card .value {
-				font-size: 1rem;
-				color: rgb(var(--black));
+				min-height: 520px;
+				padding: clamp(1rem, 3vw, 1.6rem);
 			}
 			.detail-header {
 				display: flex;
 				align-items: flex-start;
 				justify-content: space-between;
 				gap: 1rem;
-				margin-bottom: 1rem;
+				margin-bottom: 1.2rem;
+			}
+			.detail-header h2 {
+				margin: 0;
+				font-family: Georgia, 'Noto Serif SC', serif;
+				font-size: clamp(1.7rem, 4vw, 2.6rem);
+				font-weight: 500;
+				color: #273522;
 			}
 			.detail-header p {
 				margin: 0.45rem 0 0;
-				color: rgba(var(--gray-dark), 0.84);
+				color: #6d7768;
 			}
-			.detail-actions {
-				display: flex;
-				gap: 0.75rem;
-				flex-wrap: wrap;
-			}
-			.action-pill {
+			.badge {
 				display: inline-flex;
-				align-items: center;
-				padding: 0.55rem 0.9rem;
+				flex: 0 0 auto;
+				padding: 0.42rem 0.7rem;
 				border-radius: 999px;
-				background: #e7eee1;
-				color: #355029;
-				font-size: 0.9rem;
-				text-decoration: none;
+				background: #edf0e8;
+				color: #526149;
+				font-size: 0.75rem;
 			}
-			.upload-panel {
-				padding: 1rem 1.1rem;
-				border-radius: 18px;
-				border: 1px solid rgba(67, 106, 57, 0.16);
-				background: linear-gradient(180deg, rgba(240, 246, 236, 0.96), rgba(255, 255, 255, 0.96));
+			.stats {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 0.7rem;
 				margin-bottom: 1rem;
 			}
-			.upload-panel h2 {
-				margin-bottom: 0.35rem;
+			.stat {
+				padding: 1rem;
+				border-radius: 16px;
+				background: #f6f5ef;
 			}
-			.upload-panel p {
-				margin: 0 0 0.85rem;
-				color: rgba(var(--gray-dark), 0.78);
-			}
-			.upload-form {
-				display: grid;
-				gap: 0.75rem;
-			}
-			.upload-form label {
+			.stat span,
+			.stat strong {
 				display: block;
-				font-size: 0.86rem;
-				color: rgba(var(--gray-dark), 0.78);
+			}
+			.stat span {
 				margin-bottom: 0.35rem;
+				color: #7a8374;
+				font-size: 0.72rem;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
 			}
-			.upload-form input[type='file'],
-			.upload-form input[type='text'] {
-				width: 100%;
-				padding: 0.8rem 0.95rem;
-				border-radius: 14px;
-				border: 1px solid rgba(var(--gray), 0.24);
-				background: white;
-				box-sizing: border-box;
+			.stat strong {
+				overflow: hidden;
+				color: #33402f;
+				font-size: 0.92rem;
+				text-overflow: ellipsis;
+				white-space: nowrap;
 			}
-			.upload-actions {
-				display: flex;
+			.sync-card {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) auto;
+				gap: 1.2rem;
 				align-items: center;
-				gap: 0.75rem;
+				padding: 1.2rem;
+				border-radius: 18px;
+				background: linear-gradient(135deg, #e9eee2, #f6f4e9);
+				border: 1px solid rgba(66, 92, 55, 0.12);
+			}
+			.sync-card h3 {
+				margin: 0 0 0.3rem;
+				font-size: 1rem;
+				color: #30432a;
+			}
+			.sync-card p {
+				margin: 0;
+				color: #707a69;
+				font-size: 0.84rem;
+				line-height: 1.55;
+			}
+			.actions {
+				display: flex;
+				gap: 0.55rem;
 				flex-wrap: wrap;
 			}
-			.primary-button {
+			.button {
 				display: inline-flex;
 				align-items: center;
 				justify-content: center;
-				padding: 0.8rem 1.1rem;
-				border: none;
+				min-height: 2.65rem;
+				padding: 0 1rem;
+				border: 0;
 				border-radius: 999px;
-				background: #34552d;
+				background: #36542e;
 				color: white;
-				font-size: 0.95rem;
+				text-decoration: none;
 				cursor: pointer;
 			}
-			.primary-button[disabled] {
+			.button.secondary {
+				border: 1px solid rgba(54, 84, 46, 0.16);
+				background: rgba(255, 255, 255, 0.65);
+				color: #36542e;
+			}
+			.button[disabled] {
 				opacity: 0.55;
 				cursor: wait;
 			}
-			.upload-status {
-				font-size: 0.9rem;
-				color: rgba(var(--gray-dark), 0.78);
+			.upload-area {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) minmax(180px, 0.65fr);
+				gap: 0.7rem;
+				margin-top: 0.8rem;
 			}
-			.upload-status.error {
-				color: #8b352c;
+			.field label {
+				display: block;
+				margin: 0 0 0.35rem;
+				color: #667060;
+				font-size: 0.76rem;
+			}
+			.field input,
+			.field textarea {
+				box-sizing: border-box;
+				width: 100%;
+				padding: 0.72rem 0.8rem;
+				border: 1px solid rgba(50, 64, 43, 0.18);
+				border-radius: 12px;
+				background: rgba(255, 255, 255, 0.82);
+				color: #283423;
+			}
+			.field textarea {
+				min-height: 88px;
+				resize: vertical;
+			}
+			.upload-status {
+				min-height: 1.4rem;
+				margin: 0.65rem 0 0;
+				color: #6e7768;
+				font-size: 0.82rem;
 			}
 			.upload-status.success {
-				color: #335b2b;
+				color: #3c6732;
+			}
+			.upload-status.error {
+				color: #9a493e;
+			}
+			.history-heading {
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				margin: 1.4rem 0 0.7rem;
+			}
+			.history-heading h3 {
+				margin: 0;
+				font-size: 0.88rem;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: #5d6857;
 			}
 			.version-list {
 				display: grid;
-				gap: 0.75rem;
+				gap: 0.55rem;
 			}
-			.version-card h3 {
-				font-size: 1rem;
-				margin-bottom: 0.4rem;
-			}
-			.version-actions {
-				margin-top: 0.75rem;
-				display: flex;
-				gap: 0.6rem;
-				flex-wrap: wrap;
-			}
-			.secondary-link {
-				display: inline-flex;
+			.version-card {
+				display: grid;
+				grid-template-columns: minmax(0, 1fr) auto;
+				gap: 1rem;
 				align-items: center;
-				padding: 0.5rem 0.85rem;
-				border-radius: 999px;
-				background: rgba(52, 85, 45, 0.08);
-				color: #34552d;
-				text-decoration: none;
-				font-size: 0.9rem;
+				padding: 0.9rem 1rem;
+				border: 1px solid rgba(50, 64, 43, 0.1);
+				border-radius: 15px;
 			}
-			.version-meta {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 0.9rem;
+			.version-card strong {
+				display: block;
+				overflow: hidden;
+				color: #354130;
 				font-size: 0.9rem;
-				color: rgba(var(--gray-dark), 0.78);
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+			.version-card p {
+				margin: 0.3rem 0 0;
+				color: #7b8376;
+				font-size: 0.76rem;
+			}
+			.version-note {
+				color: #596652;
+			}
+			.download-link {
+				padding: 0.52rem 0.8rem;
+				border-radius: 999px;
+				background: #eef1e9;
+				color: #3c5634;
+				font-size: 0.78rem;
+				text-decoration: none;
 			}
 			.empty,
 			.loading,
-			.error {
-				padding: 1.2rem;
-				border-radius: 18px;
-				background: rgba(255, 255, 255, 0.88);
-				border: 1px dashed rgba(var(--gray), 0.24);
+			.error-box {
+				padding: 1.1rem;
+				border: 1px dashed rgba(50, 64, 43, 0.2);
+				border-radius: 15px;
+				color: #737c6e;
+				background: rgba(248, 247, 241, 0.7);
 			}
-			.error {
-				background: rgba(255, 242, 240, 0.95);
+			.error-box {
 				border-style: solid;
-				border-color: rgba(171, 73, 60, 0.18);
-				color: #8b352c;
+				border-color: rgba(154, 73, 62, 0.2);
+				color: #91443a;
+				background: #fff4f0;
 			}
-			@media (max-width: 900px) {
-				.shell {
+			dialog {
+				width: min(510px, calc(100% - 2rem));
+				padding: 0;
+				border: 0;
+				border-radius: 22px;
+				background: #fffdf7;
+				box-shadow: 0 28px 80px rgba(32, 42, 27, 0.28);
+			}
+			dialog::backdrop {
+				background: rgba(26, 35, 23, 0.54);
+				backdrop-filter: blur(4px);
+			}
+			.dialog-inner {
+				padding: 1.35rem;
+			}
+			.dialog-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: start;
+				gap: 1rem;
+				margin-bottom: 1rem;
+			}
+			.dialog-header h2 {
+				margin: 0;
+				font-family: Georgia, 'Noto Serif SC', serif;
+				font-weight: 500;
+				color: #2d3c28;
+			}
+			.dialog-header p {
+				margin: 0.35rem 0 0;
+				color: #70796a;
+				font-size: 0.83rem;
+			}
+			.close-button {
+				border: 0;
+				background: transparent;
+				color: #687262;
+				font-size: 1.3rem;
+				cursor: pointer;
+			}
+			.form-grid {
+				display: grid;
+				gap: 0.75rem;
+			}
+			.dialog-actions {
+				display: flex;
+				justify-content: flex-end;
+				gap: 0.6rem;
+				margin-top: 1rem;
+			}
+			@media (max-width: 840px) {
+				.workspace {
 					grid-template-columns: 1fr;
 				}
-				.state-grid {
+				.sidebar {
+					position: static;
+				}
+				.world-list {
+					grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+				}
+				.stats,
+				.upload-area {
 					grid-template-columns: 1fr;
 				}
+			}
+			@media (max-width: 600px) {
 				:global(main.save-console-page) {
 					width: calc(100% - 1rem);
-					padding-top: 1rem;
+					padding-top: 0.75rem;
+				}
+				.hero {
+					border-radius: 20px;
+				}
+				.sync-card,
+				.version-card {
+					grid-template-columns: 1fr;
+				}
+				.detail-header {
+					flex-direction: column;
+				}
+				.topbar {
+					padding: 0 0.35rem;
 				}
 			}
 		</style>
 	</head>
 	<body>
 		<main class="save-console-page">
-			<section class="hero panel">
-				<span class="eyebrow">Protected Console</span>
-				<h1>Minecraft 存档控制台</h1>
-				<p>
-					这里是你网站里的受保护存档后台。现在已经能查看世界和版本历史，也支持手动上传 zip
-					存档包。
-				</p>
+			<div class="topbar">
+				<a class="back-link" href="/">← 返回 Huago Cloud</a>
+				<div class="session">
+					<span class="session-dot"></span>
+					<span id="session-label">正在确认身份</span>
+				</div>
+			</div>
+
+			<section class="hero">
+				<span class="eyebrow">Private save archive</span>
+				<h1>把世界带在身边。</h1>
+				<p>为每个 Minecraft 世界保留独立的云端版本。需要换设备时下载，需要留档时上传，所有操作都由你手动确认。</p>
 			</section>
 
-			<section class="shell">
+			<section class="workspace">
 				<aside class="sidebar panel">
-					<div class="user-card" id="user-card">
-						<strong>加载中</strong>
-						<span>正在读取当前用户信息...</span>
+					<div class="sidebar-heading">
+						<h2>我的世界</h2>
+						<button class="icon-button" id="open-create-world" type="button" aria-label="新建世界" hidden>+</button>
 					</div>
-					<h2>世界列表</h2>
 					<div class="world-list" id="world-list">
-						<div class="loading">正在加载世界列表...</div>
+						<div class="loading">正在读取世界列表...</div>
+					</div>
+					<div class="sidebar-note">
+						网页不会自动读取或修改电脑里的 Minecraft 文件夹。当前版本使用 ZIP 手动上传，确保每次覆盖都由你亲自确认。
 					</div>
 				</aside>
 
 				<section class="content panel">
 					<div id="detail-root">
-						<div class="empty">先选择一个世界。这里会显示它的基础信息、上传入口和版本历史。</div>
+						<div class="empty">选择一个世界后，这里会显示最新存档和历史版本。</div>
 					</div>
 				</section>
 			</section>
 		</main>
+
+		<dialog id="create-world-dialog">
+			<form class="dialog-inner" id="create-world-form" method="dialog">
+				<div class="dialog-header">
+					<div>
+						<h2>新建世界</h2>
+						<p>创建一个独立的云端存档空间，之后再上传第一个 ZIP。</p>
+					</div>
+					<button class="close-button" id="close-create-world" type="button" aria-label="关闭">×</button>
+				</div>
+				<div class="form-grid">
+					<div class="field">
+						<label for="world-name">显示名称</label>
+						<input id="world-name" name="displayName" maxlength="80" required placeholder="例如 HuagoSurvive" />
+					</div>
+					<div class="field">
+						<label for="world-slug">固定标识（小写字母、数字、- 或 _）</label>
+						<input id="world-slug" name="slug" maxlength="64" pattern="[a-z0-9][a-z0-9_-]{0,63}" required placeholder="例如 huagosurvive" />
+					</div>
+					<div class="field">
+						<label for="world-description">说明（可选）</label>
+						<textarea id="world-description" name="description" maxlength="500" placeholder="例如：长期生存主世界"></textarea>
+					</div>
+					<div class="field">
+						<label for="world-retention">保留历史版本数</label>
+						<input id="world-retention" name="retentionCount" type="number" min="1" max="100" value="20" required />
+					</div>
+				</div>
+				<p class="upload-status" id="create-world-status"></p>
+				<div class="dialog-actions">
+					<button class="button secondary" id="cancel-create-world" type="button">取消</button>
+					<button class="button" id="create-world-submit" type="submit">创建世界</button>
+				</div>
+			</form>
+		</dialog>
+
 		<Footer />
-		<script type="module">
+
+		<script is:inline type="module">
 			const worldListEl = document.getElementById('world-list');
 			const detailRootEl = document.getElementById('detail-root');
-			const userCardEl = document.getElementById('user-card');
+			const sessionLabelEl = document.getElementById('session-label');
+			const createWorldButton = document.getElementById('open-create-world');
+			const createWorldDialog = document.getElementById('create-world-dialog');
+			const createWorldForm = document.getElementById('create-world-form');
+			const worldNameInput = document.getElementById('world-name');
+			const worldSlugInput = document.getElementById('world-slug');
+
 			const state = {
 				worlds: [],
-				selectedSlug: new URL(window.location.href).searchParams.get('world') || null
+				selectedSlug: new URL(window.location.href).searchParams.get('world') || null,
+				user: null
 			};
+
+			const escapeHtml = (value) =>
+				String(value ?? '')
+					.replaceAll('&', '&amp;')
+					.replaceAll('<', '&lt;')
+					.replaceAll('>', '&gt;')
+					.replaceAll('"', '&quot;')
+					.replaceAll("'", '&#039;');
 
 			const formatDate = (value) => {
 				if (!value) return '暂无';
-				return new Date(value).toLocaleString('zh-CN', {
+				const date = new Date(value);
+				if (Number.isNaN(date.valueOf())) return '未知时间';
+				return date.toLocaleString('zh-CN', {
 					year: 'numeric',
 					month: '2-digit',
 					day: '2-digit',
@@ -349,49 +614,42 @@ const pageDescription = 'Protected Minecraft save console';
 			};
 
 			const fetchJson = async (url, options = {}) => {
-				const response = await fetch(url, {
-					credentials: 'same-origin',
-					...options
-				});
-				const payload = await response.json();
-				if (!response.ok || !payload.ok) {
-					throw new Error(payload?.error?.message || '请求失败');
+				const response = await fetch(url, { credentials: 'same-origin', ...options });
+				const payload = await response.json().catch(() => null);
+				if (!response.ok || !payload?.ok) {
+					throw new Error(payload?.error?.message || `请求失败（${response.status}）`);
 				}
 				return payload.data;
 			};
 
-			const renderUser = (userData) => {
-				userCardEl.innerHTML = `
-					<strong>${userData.user.displayName}</strong>
-					<span>角色：${userData.user.role}</span>
-				`;
+			const setUrlWorld = (slug) => {
+				const nextUrl = new URL(window.location.href);
+				if (slug) nextUrl.searchParams.set('world', slug);
+				else nextUrl.searchParams.delete('world');
+				window.history.replaceState({}, '', nextUrl);
 			};
 
 			const renderWorldList = () => {
 				if (state.worlds.length === 0) {
-					worldListEl.innerHTML = '<div class="empty">当前没有可访问的世界。</div>';
+					worldListEl.innerHTML = '<div class="empty">还没有世界。点击右上角的 + 创建一个。</div>';
 					return;
 				}
 
 				worldListEl.innerHTML = state.worlds
-					.map(
-						(world) => `
-							<button class="world-item ${world.slug === state.selectedSlug ? 'active' : ''}" data-world-slug="${world.slug}" type="button">
-								<strong>${world.displayName}</strong>
-								<span>${world.latestVersion ? `最新上传：${formatDate(world.latestVersion.uploadedAt)}` : '还没有版本'}</span>
-							</button>
-						`
-					)
+					.map((world) => `
+						<button class="world-item ${world.slug === state.selectedSlug ? 'active' : ''}" data-world-slug="${escapeHtml(world.slug)}" type="button">
+							<strong>${escapeHtml(world.displayName)}</strong>
+							<span>${world.latestVersion ? `更新于 ${formatDate(world.latestVersion.uploadedAt)}` : '等待首次上传'}</span>
+						</button>
+					`)
 					.join('');
 
 				worldListEl.querySelectorAll('[data-world-slug]').forEach((button) => {
 					button.addEventListener('click', () => {
 						const slug = button.getAttribute('data-world-slug');
-						if (!slug) return;
+						if (!slug || slug === state.selectedSlug) return;
 						state.selectedSlug = slug;
-						const nextUrl = new URL(window.location.href);
-						nextUrl.searchParams.set('world', slug);
-						window.history.replaceState({}, '', nextUrl);
+						setUrlWorld(slug);
 						renderWorldList();
 						void loadWorldDetail(slug);
 					});
@@ -406,8 +664,8 @@ const pageDescription = 'Protected Minecraft save console';
 			};
 
 			const refreshWorldList = async () => {
-				const worldsData = await fetchJson('/api/saves/worlds');
-				state.worlds = worldsData.worlds || [];
+				const data = await fetchJson('/api/saves/worlds');
+				state.worlds = data.worlds || [];
 				renderWorldList();
 			};
 
@@ -415,56 +673,39 @@ const pageDescription = 'Protected Minecraft save console';
 				const fileInput = document.getElementById('upload-file');
 				const noteInput = document.getElementById('upload-note');
 				const button = document.getElementById('upload-submit');
-				if (!(fileInput instanceof HTMLInputElement) || !(noteInput instanceof HTMLInputElement)) {
-					return;
-				}
+				if (!(fileInput instanceof HTMLInputElement) || !(noteInput instanceof HTMLInputElement)) return;
 
 				const file = fileInput.files?.[0];
 				if (!file) {
-					renderUploadStatus('先选择一个 zip 存档文件。', 'error');
+					renderUploadStatus('请先选择一个 ZIP 存档文件。', 'error');
 					return;
 				}
 				if (!file.name.toLowerCase().endsWith('.zip')) {
-					renderUploadStatus('当前只支持上传 .zip 存档包。', 'error');
+					renderUploadStatus('当前只支持 ZIP 格式。', 'error');
 					return;
 				}
 
-				if (button instanceof HTMLButtonElement) {
-					button.disabled = true;
-				}
-				renderUploadStatus('正在上传存档，这一步可能要等一会儿...');
+				if (button instanceof HTMLButtonElement) button.disabled = true;
+				renderUploadStatus(`正在上传 ${file.name}，请保持页面打开...`);
 
 				try {
 					await fetchJson(`/api/saves/worlds/${encodeURIComponent(slug)}/upload`, {
 						method: 'POST',
 						headers: {
-							'Content-Type': file.type || 'application/zip',
-							'X-Save-Filename': file.name,
-							'X-Save-Note': noteInput.value.trim()
+							'Content-Type': file.type || 'application/octet-stream',
+							'X-Save-Filename-Encoded': encodeURIComponent(file.name),
+							'X-Save-Note-Encoded': encodeURIComponent(noteInput.value.trim())
 						},
 						body: file
 					});
 					fileInput.value = '';
 					noteInput.value = '';
-					renderUploadStatus('上传成功，正在刷新版本历史...', 'success');
 					await refreshWorldList();
-					await loadWorldDetail(slug, { preserveLoading: true });
-					renderUploadStatus('上传成功，版本历史已更新。', 'success');
+					await loadWorldDetail(slug);
 				} catch (error) {
-					renderUploadStatus(error instanceof Error ? error.message : '上传失败', 'error');
+					renderUploadStatus(error instanceof Error ? error.message : '上传失败。', 'error');
 				} finally {
-					if (button instanceof HTMLButtonElement) {
-						button.disabled = false;
-					}
-				}
-			};
-
-			const attachDetailHandlers = (slug) => {
-				const uploadButton = document.getElementById('upload-submit');
-				if (uploadButton instanceof HTMLButtonElement) {
-					uploadButton.addEventListener('click', () => {
-						void uploadSelectedArchive(slug);
-					});
+					if (button instanceof HTMLButtonElement) button.disabled = false;
 				}
 			};
 
@@ -475,105 +716,167 @@ const pageDescription = 'Protected Minecraft save console';
 				detailRootEl.innerHTML = `
 					<div class="detail-header">
 						<div>
-							<h2>${world.displayName}</h2>
-							<p>${world.description || '这个世界还没有补充说明。'}</p>
+							<h2>${escapeHtml(world.displayName)}</h2>
+							<p>${escapeHtml(world.description || '这个世界还没有说明。')}</p>
 						</div>
-						<div class="detail-actions">
-							<span class="action-pill">手动同步模式</span>
-							<span class="action-pill">保留 ${world.retentionCount} 个版本</span>
-							${
-								latest
-									? `<a class="action-pill" href="/api/saves/worlds/${encodeURIComponent(world.slug)}/download/latest">下载最新版本</a>`
-									: ''
-							}
+						<span class="badge">保留 ${escapeHtml(world.retentionCount)} 个版本</span>
+					</div>
+
+					<div class="stats">
+						<div class="stat">
+							<span>最新版本</span>
+							<strong title="${escapeHtml(latest?.filename || '暂无')}">${escapeHtml(latest?.filename || '暂无')}</strong>
+						</div>
+						<div class="stat">
+							<span>上传时间</span>
+							<strong>${formatDate(latest?.uploadedAt)}</strong>
+						</div>
+						<div class="stat">
+							<span>文件大小</span>
+							<strong>${formatSize(latest?.size)}</strong>
 						</div>
 					</div>
 
-					<div class="state-grid">
-						<div class="state-card">
-							<span class="label">最新版本</span>
-							<div class="value">${latest ? latest.filename : '暂无'}</div>
+					<div class="sync-card">
+						<div>
+							<h3>手动更新云存档</h3>
+							<p>退出 Minecraft 后，将本地世界文件夹压缩为 ZIP，再在这里上传。云端会自动记录为一个新版本。</p>
 						</div>
-						<div class="state-card">
-							<span class="label">最新上传时间</span>
-							<div class="value">${latest ? formatDate(latest.uploadedAt) : '暂无'}</div>
-						</div>
-						<div class="state-card">
-							<span class="label">存档大小</span>
-							<div class="value">${latest ? formatSize(latest.size) : '暂无'}</div>
-						</div>
-						<div class="state-card">
-							<span class="label">可访问用户</span>
-							<div class="value">${Array.isArray(world.allowedUsers) ? world.allowedUsers.join(', ') : '未配置'}</div>
+						<div class="actions">
+							${latest ? `<a class="button secondary" href="/api/saves/worlds/${encodeURIComponent(world.slug)}/download/latest">下载最新</a>` : ''}
 						</div>
 					</div>
 
-					<div class="upload-panel">
-						<h2>上传新存档</h2>
-						<p>先手动把本地世界打包成 zip，再从这里上传。这样第一版最稳，也最容易回滚。</p>
-						<div class="upload-form">
-							<div>
-								<label for="upload-file">存档压缩包</label>
-								<input id="upload-file" type="file" accept=".zip,application/zip" />
-							</div>
-							<div>
-								<label for="upload-note">备注（可选）</label>
-								<input id="upload-note" type="text" maxlength="200" placeholder="比如：打 boss 前备份" />
-							</div>
-							<div class="upload-actions">
-								<button class="primary-button" id="upload-submit" type="button">上传 zip 存档</button>
-								<span class="upload-status" id="upload-status">选择文件后即可上传到云端。</span>
-							</div>
+					<div class="upload-area">
+						<div class="field">
+							<label for="upload-file">ZIP 存档文件</label>
+							<input id="upload-file" type="file" accept=".zip,application/zip" />
+						</div>
+						<div class="field">
+							<label for="upload-note">本次备注</label>
+							<input id="upload-note" type="text" maxlength="200" placeholder="例如：下界交通完工" />
 						</div>
 					</div>
+					<div class="actions">
+						<button class="button" id="upload-submit" type="button">上传为新版本</button>
+					</div>
+					<p class="upload-status" id="upload-status">上传不会删除本地存档，也不会覆盖已有历史版本。</p>
 
-					<h2>版本历史</h2>
+					<div class="history-heading">
+						<h3>版本历史</h3>
+						<span class="badge">${versions.length} 个版本</span>
+					</div>
 					<div class="version-list">
-						${
-							versions.length > 0
-								? versions
-										.map(
-											(version) => `
-												<article class="version-card">
-													<h3>${version.filename}</h3>
-													<div class="version-meta">
-														<span>时间：${formatDate(version.uploadedAt)}</span>
-														<span>大小：${formatSize(version.size)}</span>
-														<span>来源：${version.sourceType || '未知'}</span>
-														<span>上传者：${version.uploadedBy || '未知'}</span>
-													</div>
-													<div class="version-actions">
-														<a class="secondary-link" href="/api/saves/worlds/${encodeURIComponent(world.slug)}/download/${encodeURIComponent(version.id)}">下载这个版本</a>
-													</div>
-												</article>
-											`
-										)
-										.join('')
-								: '<div class="empty">这个世界还没有历史版本。</div>'
-						}
+						${versions.length
+							? versions.map((version) => `
+								<article class="version-card">
+									<div>
+										<strong title="${escapeHtml(version.filename)}">${escapeHtml(version.filename)}</strong>
+										<p>
+											${formatDate(version.uploadedAt)} · ${formatSize(version.size)} · ${escapeHtml(version.uploadedBy || '未知上传者')}
+											${version.note ? ` · <span class="version-note">${escapeHtml(version.note)}</span>` : ''}
+										</p>
+									</div>
+									<a class="download-link" href="/api/saves/worlds/${encodeURIComponent(world.slug)}/download/${encodeURIComponent(version.id)}">下载</a>
+								</article>
+							`).join('')
+							: '<div class="empty">还没有历史版本。上传第一个 ZIP 后会显示在这里。</div>'}
 					</div>
 				`;
+
+				document.getElementById('upload-submit')?.addEventListener('click', () => {
+					void uploadSelectedArchive(world.slug);
+				});
 			};
 
-			const renderError = (message) => {
-				detailRootEl.innerHTML = `<div class="error">${message}</div>`;
-			};
-
-			const loadWorldDetail = async (slug, options = {}) => {
-				if (!options.preserveLoading) {
-					detailRootEl.innerHTML = '<div class="loading">正在加载世界详情...</div>';
-				}
+			const loadWorldDetail = async (slug) => {
+				detailRootEl.innerHTML = '<div class="loading">正在读取世界详情...</div>';
 				try {
 					const [worldData, versionsData] = await Promise.all([
 						fetchJson(`/api/saves/worlds/${encodeURIComponent(slug)}`),
 						fetchJson(`/api/saves/worlds/${encodeURIComponent(slug)}/versions`)
 					]);
 					renderDetail(worldData, versionsData);
-					attachDetailHandlers(slug);
 				} catch (error) {
-					renderError(error instanceof Error ? error.message : '加载世界详情失败');
+					detailRootEl.innerHTML = `<div class="error-box">${escapeHtml(error instanceof Error ? error.message : '读取世界失败。')}</div>`;
 				}
 			};
+
+			const slugify = (value) =>
+				value
+					.trim()
+					.toLowerCase()
+					.replace(/[^a-z0-9_-]+/g, '-')
+					.replace(/-+/g, '-')
+					.replace(/^-|-$/g, '')
+					.slice(0, 64);
+
+			let slugWasEdited = false;
+			worldNameInput?.addEventListener('input', () => {
+				if (!slugWasEdited && worldNameInput instanceof HTMLInputElement && worldSlugInput instanceof HTMLInputElement) {
+					worldSlugInput.value = slugify(worldNameInput.value);
+				}
+			});
+			worldSlugInput?.addEventListener('input', () => {
+				slugWasEdited = true;
+				if (worldSlugInput instanceof HTMLInputElement) {
+					worldSlugInput.value = slugify(worldSlugInput.value);
+				}
+			});
+
+			const closeCreateDialog = () => {
+				if (createWorldDialog instanceof HTMLDialogElement) createWorldDialog.close();
+			};
+
+			createWorldButton?.addEventListener('click', () => {
+				slugWasEdited = false;
+				if (createWorldDialog instanceof HTMLDialogElement) createWorldDialog.showModal();
+				if (worldNameInput instanceof HTMLInputElement) worldNameInput.focus();
+			});
+			document.getElementById('close-create-world')?.addEventListener('click', closeCreateDialog);
+			document.getElementById('cancel-create-world')?.addEventListener('click', closeCreateDialog);
+
+			createWorldForm?.addEventListener('submit', async (event) => {
+				event.preventDefault();
+				if (!(createWorldForm instanceof HTMLFormElement)) return;
+				const statusEl = document.getElementById('create-world-status');
+				const submitButton = document.getElementById('create-world-submit');
+				const formData = new FormData(createWorldForm);
+				const payload = {
+					displayName: String(formData.get('displayName') || '').trim(),
+					slug: String(formData.get('slug') || '').trim(),
+					description: String(formData.get('description') || '').trim(),
+					retentionCount: Number(formData.get('retentionCount') || 20),
+					allowedUsers: state.user?.id ? [state.user.id] : []
+				};
+
+				if (statusEl) {
+					statusEl.className = 'upload-status';
+					statusEl.textContent = '正在创建世界...';
+				}
+				if (submitButton instanceof HTMLButtonElement) submitButton.disabled = true;
+
+				try {
+					const data = await fetchJson('/api/saves/worlds', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(payload)
+					});
+					createWorldForm.reset();
+					closeCreateDialog();
+					state.selectedSlug = data.world.slug;
+					setUrlWorld(state.selectedSlug);
+					await refreshWorldList();
+					await loadWorldDetail(state.selectedSlug);
+				} catch (error) {
+					if (statusEl) {
+						statusEl.className = 'upload-status error';
+						statusEl.textContent = error instanceof Error ? error.message : '创建失败。';
+					}
+				} finally {
+					if (submitButton instanceof HTMLButtonElement) submitButton.disabled = false;
+				}
+			});
 
 			const bootstrap = async () => {
 				try {
@@ -581,22 +884,23 @@ const pageDescription = 'Protected Minecraft save console';
 						fetchJson('/api/saves/me'),
 						fetchJson('/api/saves/worlds')
 					]);
-					renderUser(meData);
+					state.user = meData.user;
 					state.worlds = worldsData.worlds || [];
-					if (!state.selectedSlug && state.worlds[0]) {
-						state.selectedSlug = state.worlds[0].slug;
+					sessionLabelEl.textContent = `${meData.user.displayName} · ${meData.user.role}`;
+					if (meData.capabilities?.canCreateWorld && createWorldButton instanceof HTMLButtonElement) {
+						createWorldButton.hidden = false;
+					}
+
+					if (!state.worlds.some((world) => world.slug === state.selectedSlug)) {
+						state.selectedSlug = state.worlds[0]?.slug || null;
+						setUrlWorld(state.selectedSlug);
 					}
 					renderWorldList();
-					if (state.selectedSlug) {
-						await loadWorldDetail(state.selectedSlug);
-					}
+					if (state.selectedSlug) await loadWorldDetail(state.selectedSlug);
 				} catch (error) {
-					userCardEl.innerHTML = `
-						<strong>加载失败</strong>
-						<span>${error instanceof Error ? error.message : '未知错误'}</span>
-					`;
-					worldListEl.innerHTML = '<div class="error">无法连接存档控制台 API。</div>';
-					renderError('当前无法读取世界数据，请检查 `/api/saves` 服务和 nginx 反代配置。');
+					sessionLabelEl.textContent = '连接失败';
+					worldListEl.innerHTML = '<div class="error-box">无法读取世界列表。</div>';
+					detailRootEl.innerHTML = `<div class="error-box">${escapeHtml(error instanceof Error ? error.message : '无法连接存档服务。')}</div>`;
 				}
 			};
 

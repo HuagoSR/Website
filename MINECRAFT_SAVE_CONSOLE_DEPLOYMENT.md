@@ -146,15 +146,17 @@ After deployment, verify:
 This service slice now includes:
 
 - world list
+- administrator world creation from the UI
 - world detail
 - version history
 - manual zip upload
 - latest version download
 - historical version download
+- strict world slug and ZIP signature validation
+- an isolated API smoke test
 
 It does not yet implement:
 
-- world creation from the UI
 - role management UI
 
 Those come in the next implementation pass.
