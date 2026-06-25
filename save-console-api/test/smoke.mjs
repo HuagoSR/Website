@@ -9,6 +9,22 @@ const dataRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'save-console-test-'));
 const port = 14312;
 const baseUrl = `http://127.0.0.1:${port}`;
 const serverPath = fileURLToPath(new URL('../src/server.mjs', import.meta.url));
+const legacyArchive = Buffer.concat([
+	Buffer.from([0x50, 0x4b, 0x05, 0x06]),
+	Buffer.alloc(18)
+]);
+const legacyWorldDir = path.join(dataRoot, 'worlds', 'LegacyWorld');
+await fs.mkdir(path.join(legacyWorldDir, 'versions'), { recursive: true });
+await fs.writeFile(path.join(legacyWorldDir, 'versions', 'LegacyWorld.zip'), legacyArchive);
+await fs.writeFile(
+	path.join(legacyWorldDir, 'latest.json'),
+	JSON.stringify({
+		world: 'LegacyWorld',
+		latest_file: 'LegacyWorld.zip',
+		size: legacyArchive.length,
+		uploaded_at: '2026-06-25T13:49:39Z'
+	})
+);
 
 const child = spawn(process.execPath, [serverPath], {
 	env: {
@@ -71,6 +87,14 @@ try {
 	assert.equal(duplicate.response.status, 409);
 	assert.equal(duplicate.payload.error.code, 'world_already_exists');
 
+	const legacyDuplicate = await requestJson('/api/saves/worlds', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ slug: 'legacyworld', displayName: 'Legacy Duplicate' })
+	});
+	assert.equal(legacyDuplicate.response.status, 409);
+	assert.equal(legacyDuplicate.payload.error.code, 'world_already_exists');
+
 	const invalid = await requestJson('/api/saves/worlds', {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
@@ -108,13 +132,21 @@ try {
 
 	const worlds = await requestJson('/api/saves/worlds');
 	assert.equal(worlds.response.status, 200);
-	assert.equal(worlds.payload.data.worlds.length, 1);
-	assert.equal(worlds.payload.data.worlds[0].latestVersion.size, emptyZip.length);
+	assert.equal(worlds.payload.data.worlds.length, 2);
+	assert.equal(
+		worlds.payload.data.worlds.find((world) => world.slug === 'test-world').latestVersion.size,
+		emptyZip.length
+	);
+	assert.ok(worlds.payload.data.worlds.some((world) => world.slug === 'legacyworld'));
 
 	const download = await fetch(`${baseUrl}/api/saves/worlds/test-world/download/latest`);
 	assert.equal(download.status, 200);
 	assert.equal(download.headers.get('content-type'), 'application/zip');
 	assert.deepEqual(Buffer.from(await download.arrayBuffer()), emptyZip);
+
+	const legacyDownload = await fetch(`${baseUrl}/api/saves/worlds/legacyworld/download/latest`);
+	assert.equal(legacyDownload.status, 200);
+	assert.deepEqual(Buffer.from(await legacyDownload.arrayBuffer()), legacyArchive);
 
 	console.log('Save console smoke test passed.');
 } finally {

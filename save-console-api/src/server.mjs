@@ -375,7 +375,7 @@ async function routeRequest(request, response) {
 
 		const decodedNote = decodeHeaderValue(request, 'x-save-note-encoded', 'x-save-note');
 		const note = decodedNote ? decodedNote.trim().slice(0, 200) : '';
-		const uploadTarget = createRequestUploadTarget(config, slug);
+		const uploadTarget = createRequestUploadTarget(config, world.storageName);
 
 		try {
 			const uploadMeta = await streamRequestToTempFile(
@@ -411,7 +411,7 @@ async function routeRequest(request, response) {
 				ok: true,
 				data: {
 					version: result.version,
-					world: result.world
+					world: buildWorldSummary(result.world).world
 				}
 			});
 		} catch (error) {

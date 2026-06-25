@@ -101,11 +101,38 @@ async function loadVersionsFromLegacy(worldDir, latest) {
 	return sortNewestFirst(versions);
 }
 
-async function loadWorldRecord(config, slug) {
-	if (!isValidWorldSlug(slug)) {
+async function resolveWorldStorageName(config, slug) {
+	const normalizedSlug = normalizeWorldSlug(slug);
+	if (!isValidWorldSlug(normalizedSlug)) {
 		return null;
 	}
-	const worldDir = path.join(config.worldsRoot, slug);
+
+	let entries = [];
+	try {
+		entries = await fs.readdir(config.worldsRoot, { withFileTypes: true });
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+			return null;
+		}
+		throw error;
+	}
+
+	const match = entries.find(
+		(entry) => entry.isDirectory() && normalizeWorldSlug(entry.name) === normalizedSlug
+	);
+	return match?.name || null;
+}
+
+async function loadWorldRecord(config, slug, knownStorageName = null) {
+	const normalizedSlug = normalizeWorldSlug(slug);
+	if (!isValidWorldSlug(normalizedSlug)) {
+		return null;
+	}
+	const storageName = knownStorageName || (await resolveWorldStorageName(config, normalizedSlug));
+	if (!storageName) {
+		return null;
+	}
+	const worldDir = path.join(config.worldsRoot, storageName);
 	const worldJson = await readJsonIfExists(path.join(worldDir, 'world.json'));
 	const latestJson = await readJsonIfExists(path.join(worldDir, 'latest.json'));
 	const versionsJson = await readJsonIfExists(path.join(worldDir, 'versions.json'));
@@ -114,13 +141,13 @@ async function loadWorldRecord(config, slug) {
 		return null;
 	}
 
-	const displayName = worldJson?.displayName || latestJson?.world || slug;
+	const displayName = worldJson?.displayName || latestJson?.world || storageName;
 	const allowedUsers = Array.isArray(worldJson?.allowedUsers)
 		? worldJson.allowedUsers
 		: [config.defaultOwner];
 	const normalizedLatest = latestJson
 		? {
-				worldId: latestJson.worldId || `world_${slug}`,
+				worldId: latestJson.worldId || `world_${normalizedSlug}`,
 				versionId:
 					latestJson.versionId ||
 					(latestJson.latest_file
@@ -141,8 +168,9 @@ async function loadWorldRecord(config, slug) {
 	const latestVersion = versions[0] || null;
 
 	return {
-		id: worldJson?.id || `world_${slug}`,
-		slug,
+		id: worldJson?.id || `world_${normalizedSlug}`,
+		slug: normalizedSlug,
+		storageName,
 		displayName,
 		description: worldJson?.description || '',
 		retentionCount: worldJson?.retentionCount ?? 20,
@@ -176,7 +204,7 @@ export async function listVisibleWorlds(config, userId) {
 		if (!isValidWorldSlug(slug)) {
 			continue;
 		}
-		const world = await loadWorldRecord(config, slug);
+		const world = await loadWorldRecord(config, slug, entry.name);
 		if (!world) {
 			continue;
 		}
@@ -252,6 +280,9 @@ export async function createWorld(
 	}
 
 	await ensureDirectory(config.worldsRoot);
+	if (await resolveWorldStorageName(config, normalizedSlug)) {
+		return { error: 'world_already_exists' };
+	}
 	const worldDir = path.join(config.worldsRoot, normalizedSlug);
 	try {
 		await fs.mkdir(worldDir);
@@ -306,7 +337,7 @@ export async function getDownloadVersion(config, userId, slug, versionId = 'late
 		return { error: 'version_not_found' };
 	}
 
-	const archivePath = path.join(config.worldsRoot, world.slug, 'versions', version.filename);
+	const archivePath = path.join(config.worldsRoot, world.storageName, 'versions', version.filename);
 	try {
 		const stats = await fs.stat(archivePath);
 		if (!stats.isFile()) {
@@ -340,7 +371,7 @@ export async function saveUploadedVersion(
 		return { error: 'forbidden' };
 	}
 
-	const worldDir = path.join(config.worldsRoot, world.slug);
+	const worldDir = path.join(config.worldsRoot, world.storageName);
 	const versionsDir = path.join(worldDir, 'versions');
 	const uploadsDir = path.join(worldDir, 'uploads');
 	await ensureDirectory(versionsDir);
@@ -417,13 +448,16 @@ export async function saveUploadedVersion(
 }
 
 export function createRequestUploadTarget(config, slug) {
-	const safeSlug = normalizeWorldSlug(slug);
-	if (!isValidWorldSlug(safeSlug)) {
+	const storageName = String(slug || '').trim();
+	if (
+		!isValidWorldSlug(storageName) ||
+		path.basename(storageName) !== storageName
+	) {
 		throw new Error('invalid_slug');
 	}
 	const requestId = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
-	const worldDir = path.join(config.worldsRoot, safeSlug);
+	const worldDir = path.join(config.worldsRoot, storageName);
 	const uploadsDir = path.join(worldDir, 'uploads');
 	const tempFilePath = path.join(uploadsDir, `${requestId}.upload`);
-	return { safeSlug, uploadsDir, tempFilePath };
+	return { safeSlug: normalizeWorldSlug(storageName), uploadsDir, tempFilePath };
 }
