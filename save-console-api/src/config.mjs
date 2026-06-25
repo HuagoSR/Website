@@ -11,6 +11,7 @@ export function loadConfig() {
 	const defaultUser = getEnv('SAVE_CONSOLE_DEFAULT_USER', 'huagosr');
 	const defaultOwner = getEnv('SAVE_CONSOLE_DEFAULT_OWNER', 'huagosr');
 	const publicBase = getEnv('SAVE_CONSOLE_PUBLIC_BASE', '/api/saves');
+	const maxUploadBytes = Number.parseInt(getEnv('SAVE_CONSOLE_MAX_UPLOAD_BYTES', '2147483648'), 10);
 
 	return {
 		port: Number.isNaN(port) ? 4312 : port,
@@ -19,6 +20,7 @@ export function loadConfig() {
 		defaultUser,
 		defaultOwner,
 		publicBase,
+		maxUploadBytes: Number.isNaN(maxUploadBytes) ? 2147483648 : maxUploadBytes,
 		worldsRoot: path.join(dataRoot, 'worlds')
 	};
 }

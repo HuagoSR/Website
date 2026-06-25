@@ -161,6 +161,71 @@ const pageDescription = 'Protected Minecraft save console';
 				font-size: 0.9rem;
 				text-decoration: none;
 			}
+			.upload-panel {
+				padding: 1rem 1.1rem;
+				border-radius: 18px;
+				border: 1px solid rgba(67, 106, 57, 0.16);
+				background: linear-gradient(180deg, rgba(240, 246, 236, 0.96), rgba(255, 255, 255, 0.96));
+				margin-bottom: 1rem;
+			}
+			.upload-panel h2 {
+				margin-bottom: 0.35rem;
+			}
+			.upload-panel p {
+				margin: 0 0 0.85rem;
+				color: rgba(var(--gray-dark), 0.78);
+			}
+			.upload-form {
+				display: grid;
+				gap: 0.75rem;
+			}
+			.upload-form label {
+				display: block;
+				font-size: 0.86rem;
+				color: rgba(var(--gray-dark), 0.78);
+				margin-bottom: 0.35rem;
+			}
+			.upload-form input[type='file'],
+			.upload-form input[type='text'] {
+				width: 100%;
+				padding: 0.8rem 0.95rem;
+				border-radius: 14px;
+				border: 1px solid rgba(var(--gray), 0.24);
+				background: white;
+				box-sizing: border-box;
+			}
+			.upload-actions {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+				flex-wrap: wrap;
+			}
+			.primary-button {
+				display: inline-flex;
+				align-items: center;
+				justify-content: center;
+				padding: 0.8rem 1.1rem;
+				border: none;
+				border-radius: 999px;
+				background: #34552d;
+				color: white;
+				font-size: 0.95rem;
+				cursor: pointer;
+			}
+			.primary-button[disabled] {
+				opacity: 0.55;
+				cursor: wait;
+			}
+			.upload-status {
+				font-size: 0.9rem;
+				color: rgba(var(--gray-dark), 0.78);
+			}
+			.upload-status.error {
+				color: #8b352c;
+			}
+			.upload-status.success {
+				color: #335b2b;
+			}
 			.version-list {
 				display: grid;
 				gap: 0.75rem;
@@ -210,8 +275,8 @@ const pageDescription = 'Protected Minecraft save console';
 				<span class="eyebrow">Protected Console</span>
 				<h1>Minecraft 存档控制台</h1>
 				<p>
-					这里先展示第一阶段的只读控制台：查看当前用户、可访问世界、最新版本和历史版本。
-					上传和下载写操作会在下一步接进来。
+					这里是你网站里的受保护存档后台。现在已经能查看世界和版本历史，也支持手动上传 zip
+					存档包。
 				</p>
 			</section>
 
@@ -229,9 +294,7 @@ const pageDescription = 'Protected Minecraft save console';
 
 				<section class="content panel">
 					<div id="detail-root">
-						<div class="empty">
-							先选择一个世界。这里会显示它的最新版本、基础信息和版本历史。
-						</div>
+						<div class="empty">先选择一个世界。这里会显示它的基础信息、上传入口和版本历史。</div>
 					</div>
 				</section>
 			</section>
@@ -269,8 +332,11 @@ const pageDescription = 'Protected Minecraft save console';
 				return `${value.toFixed(index === 0 ? 0 : 2)} ${units[index]}`;
 			};
 
-			const fetchJson = async (url) => {
-				const response = await fetch(url, { credentials: 'same-origin' });
+			const fetchJson = async (url, options = {}) => {
+				const response = await fetch(url, {
+					credentials: 'same-origin',
+					...options
+				});
 				const payload = await response.json();
 				if (!response.ok || !payload.ok) {
 					throw new Error(payload?.error?.message || '请求失败');
@@ -316,6 +382,76 @@ const pageDescription = 'Protected Minecraft save console';
 				});
 			};
 
+			const renderUploadStatus = (message, tone = '') => {
+				const statusEl = document.getElementById('upload-status');
+				if (!statusEl) return;
+				statusEl.className = `upload-status${tone ? ` ${tone}` : ''}`;
+				statusEl.textContent = message;
+			};
+
+			const refreshWorldList = async () => {
+				const worldsData = await fetchJson('/api/saves/worlds');
+				state.worlds = worldsData.worlds || [];
+				renderWorldList();
+			};
+
+			const uploadSelectedArchive = async (slug) => {
+				const fileInput = document.getElementById('upload-file');
+				const noteInput = document.getElementById('upload-note');
+				const button = document.getElementById('upload-submit');
+				if (!(fileInput instanceof HTMLInputElement) || !(noteInput instanceof HTMLInputElement)) {
+					return;
+				}
+
+				const file = fileInput.files?.[0];
+				if (!file) {
+					renderUploadStatus('先选择一个 zip 存档文件。', 'error');
+					return;
+				}
+				if (!file.name.toLowerCase().endsWith('.zip')) {
+					renderUploadStatus('当前只支持上传 .zip 存档包。', 'error');
+					return;
+				}
+
+				if (button instanceof HTMLButtonElement) {
+					button.disabled = true;
+				}
+				renderUploadStatus('正在上传存档，这一步可能要等一会儿...');
+
+				try {
+					await fetchJson(`/api/saves/worlds/${encodeURIComponent(slug)}/upload`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': file.type || 'application/zip',
+							'X-Save-Filename': file.name,
+							'X-Save-Note': noteInput.value.trim()
+						},
+						body: file
+					});
+					fileInput.value = '';
+					noteInput.value = '';
+					renderUploadStatus('上传成功，正在刷新版本历史...', 'success');
+					await refreshWorldList();
+					await loadWorldDetail(slug, { preserveLoading: true });
+					renderUploadStatus('上传成功，版本历史已更新。', 'success');
+				} catch (error) {
+					renderUploadStatus(error instanceof Error ? error.message : '上传失败', 'error');
+				} finally {
+					if (button instanceof HTMLButtonElement) {
+						button.disabled = false;
+					}
+				}
+			};
+
+			const attachDetailHandlers = (slug) => {
+				const uploadButton = document.getElementById('upload-submit');
+				if (uploadButton instanceof HTMLButtonElement) {
+					uploadButton.addEventListener('click', () => {
+						void uploadSelectedArchive(slug);
+					});
+				}
+			};
+
 			const renderDetail = (worldData, versionsData) => {
 				const world = worldData.world;
 				const latest = worldData.latestVersion;
@@ -327,7 +463,7 @@ const pageDescription = 'Protected Minecraft save console';
 							<p>${world.description || '这个世界还没有补充说明。'}</p>
 						</div>
 						<div class="detail-actions">
-							<span class="action-pill">只读阶段</span>
+							<span class="action-pill">手动同步模式</span>
 							<span class="action-pill">保留 ${world.retentionCount} 个版本</span>
 						</div>
 					</div>
@@ -348,6 +484,25 @@ const pageDescription = 'Protected Minecraft save console';
 						<div class="state-card">
 							<span class="label">可访问用户</span>
 							<div class="value">${Array.isArray(world.allowedUsers) ? world.allowedUsers.join(', ') : '未配置'}</div>
+						</div>
+					</div>
+
+					<div class="upload-panel">
+						<h2>上传新存档</h2>
+						<p>先手动把本地世界打包成 zip，再从这里上传。这样第一版最稳，也最容易回滚。</p>
+						<div class="upload-form">
+							<div>
+								<label for="upload-file">存档压缩包</label>
+								<input id="upload-file" type="file" accept=".zip,application/zip" />
+							</div>
+							<div>
+								<label for="upload-note">备注（可选）</label>
+								<input id="upload-note" type="text" maxlength="200" placeholder="比如：打 boss 前备份" />
+							</div>
+							<div class="upload-actions">
+								<button class="primary-button" id="upload-submit" type="button">上传 zip 存档</button>
+								<span class="upload-status" id="upload-status">选择文件后即可上传到云端。</span>
+							</div>
 						</div>
 					</div>
 
@@ -380,14 +535,17 @@ const pageDescription = 'Protected Minecraft save console';
 				detailRootEl.innerHTML = `<div class="error">${message}</div>`;
 			};
 
-			const loadWorldDetail = async (slug) => {
-				detailRootEl.innerHTML = '<div class="loading">正在加载世界详情...</div>';
+			const loadWorldDetail = async (slug, options = {}) => {
+				if (!options.preserveLoading) {
+					detailRootEl.innerHTML = '<div class="loading">正在加载世界详情...</div>';
+				}
 				try {
 					const [worldData, versionsData] = await Promise.all([
 						fetchJson(`/api/saves/worlds/${encodeURIComponent(slug)}`),
 						fetchJson(`/api/saves/worlds/${encodeURIComponent(slug)}/versions`)
 					]);
 					renderDetail(worldData, versionsData);
+					attachDetailHandlers(slug);
 				} catch (error) {
 					renderError(error instanceof Error ? error.message : '加载世界详情失败');
 				}

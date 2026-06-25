@@ -1,7 +1,15 @@
 import http from 'node:http';
+import fs from 'node:fs';
+import fsPromises from 'node:fs/promises';
+import crypto from 'node:crypto';
 import { URL } from 'node:url';
 import { loadConfig } from './config.mjs';
-import { getVisibleWorld, listVisibleWorlds } from './storage.mjs';
+import {
+	createRequestUploadTarget,
+	getVisibleWorld,
+	listVisibleWorlds,
+	saveUploadedVersion
+} from './storage.mjs';
 
 const config = loadConfig();
 
@@ -22,6 +30,64 @@ function fail(response, statusCode, code, message) {
 		ok: false,
 		error: { code, message }
 	});
+}
+
+function parseOptionalInt(value) {
+	if (!value) return null;
+	const parsed = Number.parseInt(value, 10);
+	return Number.isNaN(parsed) ? null : parsed;
+}
+
+async function streamRequestToTempFile(request, tempFilePath, maxUploadBytes) {
+	const targetDir = tempFilePath.replace(/[\\/][^\\/]+$/, '');
+	await fsPromises.mkdir(targetDir, { recursive: true });
+
+	const hash = crypto.createHash('sha256');
+	let size = 0;
+
+	await new Promise((resolve, reject) => {
+		const fileStream = fs.createWriteStream(tempFilePath, { flags: 'wx' });
+		let settled = false;
+
+		const failOnce = async (error) => {
+			if (settled) return;
+			settled = true;
+			request.destroy();
+			fileStream.destroy();
+			await fsPromises.rm(tempFilePath, { force: true }).catch(() => undefined);
+			reject(error);
+		};
+
+		request.on('data', (chunk) => {
+			size += chunk.length;
+			if (size > maxUploadBytes) {
+				void failOnce(new Error('upload_too_large'));
+				return;
+			}
+			hash.update(chunk);
+		});
+
+		request.on('error', (error) => {
+			void failOnce(error);
+		});
+
+		fileStream.on('error', (error) => {
+			void failOnce(error);
+		});
+
+		fileStream.on('finish', () => {
+			if (settled) return;
+			settled = true;
+			resolve();
+		});
+
+		request.pipe(fileStream);
+	});
+
+	return {
+		size,
+		sha256: hash.digest('hex')
+	};
 }
 
 function getUserId(request) {
@@ -108,6 +174,98 @@ async function routeRequest(request, response) {
 			return fail(response, 404, 'world_not_found', 'The requested world does not exist.');
 		}
 		return ok(response, { versions: world.versions, nextCursor: null });
+	}
+
+	const uploadMatch = pathName.match(/^\/api\/saves\/worlds\/([^/]+)\/upload$/);
+	if (method === 'POST' && uploadMatch) {
+		const slug = decodeURIComponent(uploadMatch[1]);
+		const world = await getVisibleWorld(config, userId, slug);
+		if (!world) {
+			return fail(response, 404, 'world_not_found', 'The requested world does not exist.');
+		}
+		if (getUserRole(userId) !== 'admin') {
+			return fail(response, 403, 'forbidden', 'You do not have permission to upload for this world.');
+		}
+
+		const contentLength = parseOptionalInt(request.headers['content-length']);
+		if (contentLength !== null && contentLength > config.maxUploadBytes) {
+			return fail(
+				response,
+				413,
+				'upload_too_large',
+				`The uploaded archive exceeds the ${config.maxUploadBytes} byte limit.`
+			);
+		}
+
+		const sourceFilenameHeader = request.headers['x-save-filename'];
+		const sourceFilename =
+			typeof sourceFilenameHeader === 'string' && sourceFilenameHeader.trim()
+				? sourceFilenameHeader.trim()
+				: null;
+		if (!sourceFilename || !sourceFilename.toLowerCase().endsWith('.zip')) {
+			return fail(response, 400, 'invalid_archive', 'A .zip filename is required.');
+		}
+
+		const contentType = typeof request.headers['content-type'] === 'string' ? request.headers['content-type'] : '';
+		if (contentType && !contentType.includes('application/zip') && !contentType.includes('application/octet-stream')) {
+			return fail(
+				response,
+				400,
+				'invalid_archive',
+				'Only application/zip or application/octet-stream uploads are supported.'
+			);
+		}
+
+		const noteHeader = request.headers['x-save-note'];
+		const note =
+			typeof noteHeader === 'string' && noteHeader.trim() ? noteHeader.trim().slice(0, 200) : '';
+		const uploadTarget = createRequestUploadTarget(config, slug);
+
+		try {
+			const uploadMeta = await streamRequestToTempFile(
+				request,
+				uploadTarget.tempFilePath,
+				config.maxUploadBytes
+			);
+			if (uploadMeta.size === 0) {
+				await fsPromises.rm(uploadTarget.tempFilePath, { force: true }).catch(() => undefined);
+				return fail(response, 400, 'invalid_archive', 'The uploaded archive is empty.');
+			}
+
+			const result = await saveUploadedVersion(config, userId, slug, {
+				sourceFilename,
+				note,
+				tempFilePath: uploadTarget.tempFilePath,
+				size: uploadMeta.size,
+				sha256: uploadMeta.sha256
+			});
+
+			if (result.error === 'forbidden') {
+				return fail(response, 403, 'forbidden', 'You do not have permission to upload for this world.');
+			}
+			if (result.error === 'world_not_found') {
+				return fail(response, 404, 'world_not_found', 'The requested world does not exist.');
+			}
+
+			return json(response, 201, {
+				ok: true,
+				data: {
+					version: result.version,
+					world: result.world
+				}
+			});
+		} catch (error) {
+			await fsPromises.rm(uploadTarget.tempFilePath, { force: true }).catch(() => undefined);
+			if (error instanceof Error && error.message === 'upload_too_large') {
+				return fail(
+					response,
+					413,
+					'upload_too_large',
+					`The uploaded archive exceeds the ${config.maxUploadBytes} byte limit.`
+				);
+			}
+			throw error;
+		}
 	}
 
 	return fail(response, 404, 'not_found', 'The requested endpoint does not exist.');

@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 function toIsoFromStats(stats) {
 	return stats.mtime.toISOString();
@@ -29,11 +30,37 @@ function sanitizeSlug(slug) {
 	return slug.trim().toLowerCase();
 }
 
+function sanitizeArchiveBaseName(name) {
+	return name
+		.replace(/\.zip$/i, '')
+		.replace(/[^a-zA-Z0-9_-]+/g, '-')
+		.replace(/-+/g, '-')
+		.replace(/^-|-$/g, '');
+}
+
+function timestampId() {
+	return new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+}
+
 function canAccessWorld(world, userId, defaultOwner) {
 	if (!world.allowedUsers || world.allowedUsers.length === 0) {
 		return userId === defaultOwner;
 	}
 	return world.allowedUsers.includes(userId);
+}
+
+function canUploadWorld(world, userId, defaultOwner) {
+	return canAccessWorld(world, userId, defaultOwner) && userId === defaultOwner;
+}
+
+async function ensureDirectory(dirPath) {
+	await fs.mkdir(dirPath, { recursive: true });
+}
+
+async function writeJsonAtomic(filePath, payload) {
+	const tempPath = `${filePath}.tmp-${Date.now()}`;
+	await fs.writeFile(tempPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+	await fs.rename(tempPath, filePath);
 }
 
 async function loadVersionsFromLegacy(worldDir, latest) {
@@ -176,4 +203,103 @@ export async function getVisibleWorld(config, userId, slug) {
 		return null;
 	}
 	return world;
+}
+
+export async function saveUploadedVersion(
+	config,
+	userId,
+	slug,
+	{ sourceFilename, note, tempFilePath, size, sha256 }
+) {
+	const world = await getVisibleWorld(config, userId, slug);
+	if (!world) {
+		return { error: 'world_not_found' };
+	}
+	if (!canUploadWorld(world, userId, config.defaultOwner)) {
+		return { error: 'forbidden' };
+	}
+
+	const worldDir = path.join(config.worldsRoot, world.slug);
+	const versionsDir = path.join(worldDir, 'versions');
+	const uploadsDir = path.join(worldDir, 'uploads');
+	await ensureDirectory(versionsDir);
+	await ensureDirectory(uploadsDir);
+
+	const stamp = timestampId();
+	const versionId = `ver_${stamp}`;
+	const archiveBase =
+		sanitizeArchiveBaseName(world.displayName || sourceFilename || world.slug) || world.slug;
+	const finalFilename = `${archiveBase}-${stamp}.zip`;
+	const finalArchivePath = path.join(versionsDir, finalFilename);
+	await fs.rename(tempFilePath, finalArchivePath);
+
+	const versionRecord = {
+		id: versionId,
+		filename: finalFilename,
+		size,
+		sha256,
+		uploadedAt: new Date().toISOString(),
+		uploadedBy: userId,
+		note: note || '',
+		sourceType: 'raw-upload'
+	};
+
+	const versions = sortNewestFirst([versionRecord, ...world.versions]);
+	const versionsPayload = {
+		worldId: world.id,
+		versions
+	};
+	const latestPayload = {
+		worldId: world.id,
+		versionId,
+		filename: versionRecord.filename,
+		size: versionRecord.size,
+		sha256: versionRecord.sha256,
+		uploadedAt: versionRecord.uploadedAt,
+		uploadedBy: versionRecord.uploadedBy,
+		note: versionRecord.note,
+		sourceType: versionRecord.sourceType
+	};
+
+	await writeJsonAtomic(path.join(worldDir, 'versions.json'), versionsPayload);
+	await writeJsonAtomic(path.join(worldDir, 'latest.json'), latestPayload);
+	const existingWorldJson = await readJsonIfExists(path.join(worldDir, 'world.json'));
+	await writeJsonAtomic(path.join(worldDir, 'world.json'), {
+		id: existingWorldJson?.id || world.id,
+		slug: existingWorldJson?.slug || world.slug,
+		displayName: existingWorldJson?.displayName || world.displayName,
+		description: existingWorldJson?.description || world.description,
+		createdAt: existingWorldJson?.createdAt || world.createdAt || versionRecord.uploadedAt,
+		updatedAt: versionRecord.uploadedAt,
+		retentionCount: existingWorldJson?.retentionCount ?? world.retentionCount,
+		allowedUsers: existingWorldJson?.allowedUsers || world.allowedUsers,
+		tags: existingWorldJson?.tags || world.tags
+	});
+
+	if (world.retentionCount > 0 && versions.length > world.retentionCount) {
+		const staleVersions = versions.slice(world.retentionCount);
+		for (const stale of staleVersions) {
+			const stalePath = path.join(versionsDir, stale.filename);
+			await fs.rm(stalePath, { force: true });
+		}
+		const keptVersions = versions.slice(0, world.retentionCount);
+		await writeJsonAtomic(path.join(worldDir, 'versions.json'), {
+			worldId: world.id,
+			versions: keptVersions
+		});
+	}
+
+	return {
+		world: await getVisibleWorld(config, userId, world.slug),
+		version: versionRecord
+	};
+}
+
+export function createRequestUploadTarget(config, slug) {
+	const safeSlug = sanitizeSlug(slug);
+	const requestId = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+	const worldDir = path.join(config.worldsRoot, safeSlug);
+	const uploadsDir = path.join(worldDir, 'uploads');
+	const tempFilePath = path.join(uploadsDir, `${requestId}.upload`);
+	return { safeSlug, uploadsDir, tempFilePath };
 }

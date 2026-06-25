@@ -93,11 +93,15 @@ After deployment, verify:
 
 ## 8. What This Does Not Yet Deploy
 
-This first service slice is read-only.
+This service slice now includes:
+
+- world list
+- world detail
+- version history
+- manual zip upload
 
 It does not yet implement:
 
-- archive upload
 - direct archive download
 - world creation from the UI
 - role management UI

@@ -9,8 +9,9 @@ Current scope:
 - world list
 - world detail
 - version history
+- raw zip upload endpoint
 
-The first implementation is intentionally read-only. Upload and download write flows come next.
+The current implementation now supports manual zip upload. Download streaming is the next step.
 
 ## Run locally
 

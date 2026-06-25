@@ -15,6 +15,14 @@ The goal is to support:
 
 This draft is intentionally simple and filesystem-friendly.
 
+Current implementation status:
+
+- `GET /api/saves/me`: implemented
+- `GET /api/saves/worlds`: implemented
+- `GET /api/saves/worlds/:slug`: implemented
+- `GET /api/saves/worlds/:slug/versions`: implemented
+- `POST /api/saves/worlds/:slug/upload`: implemented with raw zip body upload
+
 ## 2. API Style
 
 - Base path: `/api/saves`
@@ -254,13 +262,16 @@ Allowed roles:
 
 Request type:
 
-- `multipart/form-data`
+- raw request body
 
-Form fields:
+Required headers:
 
-- `archive`: zip file
-- `note`: optional string
-- `sourceType`: optional string
+- `Content-Type: application/zip` or `application/octet-stream`
+- `X-Save-Filename: <name>.zip`
+
+Optional headers:
+
+- `X-Save-Note: <free text>`
 
 Behavior:
 
