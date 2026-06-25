@@ -22,6 +22,8 @@ Current implementation status:
 - `GET /api/saves/worlds/:slug`: implemented
 - `GET /api/saves/worlds/:slug/versions`: implemented
 - `POST /api/saves/worlds/:slug/upload`: implemented with raw zip body upload
+- `GET /api/saves/worlds/:slug/download/latest`: implemented
+- `GET /api/saves/worlds/:slug/download/:versionId`: implemented
 
 ## 2. API Style
 

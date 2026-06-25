@@ -234,6 +234,22 @@ const pageDescription = 'Protected Minecraft save console';
 				font-size: 1rem;
 				margin-bottom: 0.4rem;
 			}
+			.version-actions {
+				margin-top: 0.75rem;
+				display: flex;
+				gap: 0.6rem;
+				flex-wrap: wrap;
+			}
+			.secondary-link {
+				display: inline-flex;
+				align-items: center;
+				padding: 0.5rem 0.85rem;
+				border-radius: 999px;
+				background: rgba(52, 85, 45, 0.08);
+				color: #34552d;
+				text-decoration: none;
+				font-size: 0.9rem;
+			}
 			.version-meta {
 				display: flex;
 				flex-wrap: wrap;
@@ -465,6 +481,11 @@ const pageDescription = 'Protected Minecraft save console';
 						<div class="detail-actions">
 							<span class="action-pill">手动同步模式</span>
 							<span class="action-pill">保留 ${world.retentionCount} 个版本</span>
+							${
+								latest
+									? `<a class="action-pill" href="/api/saves/worlds/${encodeURIComponent(world.slug)}/download/latest">下载最新版本</a>`
+									: ''
+							}
 						</div>
 					</div>
 
@@ -520,6 +541,9 @@ const pageDescription = 'Protected Minecraft save console';
 														<span>大小：${formatSize(version.size)}</span>
 														<span>来源：${version.sourceType || '未知'}</span>
 														<span>上传者：${version.uploadedBy || '未知'}</span>
+													</div>
+													<div class="version-actions">
+														<a class="secondary-link" href="/api/saves/worlds/${encodeURIComponent(world.slug)}/download/${encodeURIComponent(version.id)}">下载这个版本</a>
 													</div>
 												</article>
 											`

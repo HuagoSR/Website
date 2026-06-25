@@ -10,8 +10,10 @@ Current scope:
 - world detail
 - version history
 - raw zip upload endpoint
+- latest archive download endpoint
+- historical archive download endpoint
 
-The current implementation now supports manual zip upload. Download streaming is the next step.
+The current implementation supports manual zip upload and direct archive download.
 
 ## Run locally
 

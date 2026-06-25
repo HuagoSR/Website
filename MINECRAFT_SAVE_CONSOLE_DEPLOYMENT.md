@@ -99,10 +99,11 @@ This service slice now includes:
 - world detail
 - version history
 - manual zip upload
+- latest version download
+- historical version download
 
 It does not yet implement:
 
-- direct archive download
 - world creation from the UI
 - role management UI
 

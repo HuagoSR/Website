@@ -205,6 +205,41 @@ export async function getVisibleWorld(config, userId, slug) {
 	return world;
 }
 
+export async function getDownloadVersion(config, userId, slug, versionId = 'latest') {
+	const world = await getVisibleWorld(config, userId, slug);
+	if (!world) {
+		return { error: 'world_not_found' };
+	}
+
+	const version =
+		versionId === 'latest'
+			? world.latestVersion
+			: world.versions.find((entry) => entry.id === versionId) || null;
+
+	if (!version) {
+		return { error: 'version_not_found' };
+	}
+
+	const archivePath = path.join(config.worldsRoot, world.slug, 'versions', version.filename);
+	try {
+		const stats = await fs.stat(archivePath);
+		if (!stats.isFile()) {
+			return { error: 'version_not_found' };
+		}
+	} catch (error) {
+		if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+			return { error: 'version_not_found' };
+		}
+		throw error;
+	}
+
+	return {
+		world,
+		version,
+		archivePath
+	};
+}
+
 export async function saveUploadedVersion(
 	config,
 	userId,

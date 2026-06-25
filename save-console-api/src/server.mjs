@@ -6,6 +6,7 @@ import { URL } from 'node:url';
 import { loadConfig } from './config.mjs';
 import {
 	createRequestUploadTarget,
+	getDownloadVersion,
 	getVisibleWorld,
 	listVisibleWorlds,
 	saveUploadedVersion
@@ -29,6 +30,28 @@ function fail(response, statusCode, code, message) {
 	json(response, statusCode, {
 		ok: false,
 		error: { code, message }
+	});
+}
+
+function escapeHeaderFilename(name) {
+	return encodeURIComponent(name).replace(/['()]/g, escape).replace(/\*/g, '%2A');
+}
+
+async function streamArchiveResponse(response, archivePath, filename) {
+	const stats = await fsPromises.stat(archivePath);
+	response.writeHead(200, {
+		'Content-Type': 'application/zip',
+		'Content-Length': String(stats.size),
+		'Content-Disposition': `attachment; filename="${filename}"; filename*=UTF-8''${escapeHeaderFilename(filename)}`,
+		'Cache-Control': 'no-store'
+	});
+
+	await new Promise((resolve, reject) => {
+		const stream = fs.createReadStream(archivePath);
+		stream.on('error', reject);
+		response.on('close', resolve);
+		response.on('finish', resolve);
+		stream.pipe(response);
 	});
 }
 
@@ -174,6 +197,35 @@ async function routeRequest(request, response) {
 			return fail(response, 404, 'world_not_found', 'The requested world does not exist.');
 		}
 		return ok(response, { versions: world.versions, nextCursor: null });
+	}
+
+	const latestDownloadMatch = pathName.match(/^\/api\/saves\/worlds\/([^/]+)\/download\/latest$/);
+	if (method === 'GET' && latestDownloadMatch) {
+		const slug = decodeURIComponent(latestDownloadMatch[1]);
+		const result = await getDownloadVersion(config, userId, slug, 'latest');
+		if (result.error === 'world_not_found') {
+			return fail(response, 404, 'world_not_found', 'The requested world does not exist.');
+		}
+		if (result.error === 'version_not_found') {
+			return fail(response, 404, 'version_not_found', 'The requested version does not exist.');
+		}
+		await streamArchiveResponse(response, result.archivePath, result.version.filename);
+		return;
+	}
+
+	const versionDownloadMatch = pathName.match(/^\/api\/saves\/worlds\/([^/]+)\/download\/([^/]+)$/);
+	if (method === 'GET' && versionDownloadMatch) {
+		const slug = decodeURIComponent(versionDownloadMatch[1]);
+		const versionId = decodeURIComponent(versionDownloadMatch[2]);
+		const result = await getDownloadVersion(config, userId, slug, versionId);
+		if (result.error === 'world_not_found') {
+			return fail(response, 404, 'world_not_found', 'The requested world does not exist.');
+		}
+		if (result.error === 'version_not_found') {
+			return fail(response, 404, 'version_not_found', 'The requested version does not exist.');
+		}
+		await streamArchiveResponse(response, result.archivePath, result.version.filename);
+		return;
 	}
 
 	const uploadMatch = pathName.match(/^\/api\/saves\/worlds\/([^/]+)\/upload$/);
