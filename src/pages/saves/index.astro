@@ -10,21 +10,21 @@ const pageDescription = '受保护的 Minecraft 多世界存档控制台';
 <html lang="zh-CN">
 	<head>
 		<BaseHead title={pageTitle} description={pageDescription} />
-		<style>
-			:global(body) {
+		<style is:global>
+			body {
 				background:
 					linear-gradient(rgba(246, 242, 230, 0.9), rgba(246, 242, 230, 0.96)),
 					repeating-linear-gradient(90deg, transparent 0 31px, rgba(52, 75, 42, 0.035) 31px 32px),
 					#f6f2e6;
 			}
-			:global(main.save-console-page) {
+			main.save-console-page {
 				width: min(1180px, calc(100% - 2rem));
 				max-width: none;
 				padding: 1.5rem 0 5rem;
 			}
-			:global(button),
-			:global(input),
-			:global(textarea) {
+			button,
+			input,
+			textarea {
 				font: inherit;
 			}
 			.topbar {
@@ -469,7 +469,7 @@ const pageDescription = '受保护的 Minecraft 多世界存档控制台';
 				}
 			}
 			@media (max-width: 600px) {
-				:global(main.save-console-page) {
+				main.save-console-page {
 					width: calc(100% - 1rem);
 					padding-top: 0.75rem;
 				}
