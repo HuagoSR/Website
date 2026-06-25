@@ -42,7 +42,7 @@ if (-not (Test-Path $distDir)) {
 
 Write-Host ""
 Write-Host "==> Step 2/4: Backing up the current site on the server"
-$backupCommand = "rm -rf '{0}' && cp -r '{1}' '{0}' && find '{1}' -mindepth 1 -maxdepth 1 -exec rm -rf {{}} +" -f $RemoteBackupDir, $RemoteSiteDir
+$backupCommand = "rm -rf '{0}' && cp -r '{1}' '{0}' && find '{1}' -mindepth 1 -maxdepth 1 ! -name '.htpasswd_saves' -exec rm -rf {{}} +" -f $RemoteBackupDir, $RemoteSiteDir
 & ssh -p $Port $remote $backupCommand
 
 Write-Host ""

@@ -1,29 +1,40 @@
+# Because the current `secure-nginx` container mounts only `default.conf` as a single file,
+# the password file should live in the mounted static site directory:
+# `/usr/share/nginx/html/.htpasswd_saves`
+#
+# The save API runs in a separate Docker container. Put both containers on the
+# same user-defined bridge network so nginx can reach the API by container name.
+
+location = /.htpasswd_saves {
+    return 404;
+}
+
 # Add this inside the existing `server { listen 443 ssl; ... }` block.
 
 location = /saves {
     auth_basic "Huago Cloud Saves";
-    auth_basic_user_file /etc/nginx/.htpasswd_saves;
+    auth_basic_user_file /usr/share/nginx/html/.htpasswd_saves;
     try_files $uri $uri/ /saves/index.html;
     root /usr/share/nginx/html;
 }
 
 location ^~ /saves/ {
     auth_basic "Huago Cloud Saves";
-    auth_basic_user_file /etc/nginx/.htpasswd_saves;
+    auth_basic_user_file /usr/share/nginx/html/.htpasswd_saves;
     try_files $uri $uri/ /saves/index.html;
     root /usr/share/nginx/html;
 }
 
 location ^~ /api/saves/ {
     auth_basic "Huago Cloud Saves";
-    auth_basic_user_file /etc/nginx/.htpasswd_saves;
+    auth_basic_user_file /usr/share/nginx/html/.htpasswd_saves;
 
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
     proxy_set_header X-Remote-User $remote_user;
-    proxy_pass http://127.0.0.1:4312;
+    proxy_pass http://minecraft-save-console:4312;
 
     client_max_body_size 2048m;
     proxy_read_timeout 300s;
