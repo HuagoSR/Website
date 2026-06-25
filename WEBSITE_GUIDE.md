@@ -743,6 +743,9 @@ powershell -ExecutionPolicy Bypass -File .\deploy.ps1
 如果你后面准备把这个网站扩展成“受保护的 Minecraft 存档管理台”，先看：
 
 - `MINECRAFT_SAVE_CONSOLE_PLAN.md`
+- `MINECRAFT_SAVE_CONSOLE_API.md`
+- `MINECRAFT_SAVE_CONSOLE_DATA_MODEL.md`
+- `MINECRAFT_SAVE_CONSOLE_PHASE1_TASKS.md`
 
 这份规划文档主要回答这些问题：
 
@@ -751,6 +754,13 @@ powershell -ExecutionPolicy Bypass -File .\deploy.ps1
 - 多世界、权限、上传、下载应该怎么拆
 - 浏览器选本地存档文件夹这件事有哪些现实限制
 - 最合适的分期实现顺序是什么
+
+如果准备正式开工，推荐阅读顺序是：
+
+1. `MINECRAFT_SAVE_CONSOLE_PLAN.md`
+2. `MINECRAFT_SAVE_CONSOLE_API.md`
+3. `MINECRAFT_SAVE_CONSOLE_DATA_MODEL.md`
+4. `MINECRAFT_SAVE_CONSOLE_PHASE1_TASKS.md`
 
 ---
 
