@@ -1,0 +1,424 @@
+---
+import BaseHead from '../../components/BaseHead.astro';
+import Footer from '../../components/Footer.astro';
+
+const pageTitle = 'Minecraft Saves';
+const pageDescription = 'Protected Minecraft save console';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={pageTitle} description={pageDescription} />
+		<style>
+			:global(body) {
+				background:
+					radial-gradient(circle at top left, rgba(140, 171, 125, 0.28), transparent 32%),
+					linear-gradient(180deg, #eef2e8 0%, #f8f5ee 46%, #f6f3ec 100%);
+			}
+			:global(main.save-console-page) {
+				width: min(1120px, calc(100% - 2rem));
+				max-width: none;
+				padding: 2rem 0 4rem;
+			}
+			.shell {
+				display: grid;
+				grid-template-columns: 320px minmax(0, 1fr);
+				gap: 1rem;
+				align-items: start;
+			}
+			.panel {
+				background: rgba(255, 253, 248, 0.9);
+				border: 1px solid rgba(var(--gray), 0.16);
+				border-radius: 22px;
+				box-shadow: 0 18px 45px rgba(57, 66, 46, 0.08);
+				backdrop-filter: blur(10px);
+			}
+			.hero {
+				padding: 1.4rem 1.4rem 1.2rem;
+				margin-bottom: 1rem;
+			}
+			.eyebrow {
+				display: inline-flex;
+				padding: 0.2rem 0.6rem;
+				border-radius: 999px;
+				background: rgba(84, 105, 61, 0.1);
+				color: #40522c;
+				font-size: 0.78rem;
+				letter-spacing: 0.06em;
+				text-transform: uppercase;
+			}
+			.hero h1 {
+				margin: 0.8rem 0 0.55rem;
+				font-size: clamp(2.1rem, 4vw, 3.4rem);
+			}
+			.hero p {
+				max-width: 52rem;
+				margin: 0;
+				color: rgba(var(--gray-dark), 0.84);
+			}
+			.sidebar {
+				padding: 1rem;
+			}
+			.sidebar h2,
+			.content h2 {
+				font-size: 1rem;
+				margin-bottom: 0.75rem;
+			}
+			.user-card {
+				padding: 0.9rem 1rem;
+				border-radius: 16px;
+				background: rgba(35, 55, 255, 0.05);
+				margin-bottom: 1rem;
+			}
+			.user-card strong {
+				display: block;
+				font-size: 0.98rem;
+			}
+			.user-card span {
+				font-size: 0.92rem;
+				color: rgba(var(--gray-dark), 0.8);
+			}
+			.world-list {
+				display: grid;
+				gap: 0.75rem;
+			}
+			.world-item {
+				border: 1px solid rgba(var(--gray), 0.14);
+				border-radius: 16px;
+				padding: 0.9rem 1rem;
+				background: white;
+				cursor: pointer;
+				transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+			}
+			.world-item:hover,
+			.world-item.active {
+				transform: translateY(-1px);
+				border-color: rgba(67, 106, 57, 0.45);
+				box-shadow: 0 12px 25px rgba(74, 92, 52, 0.08);
+			}
+			.world-item strong {
+				display: block;
+				font-size: 1rem;
+				color: rgb(var(--black));
+			}
+			.world-item span {
+				display: block;
+				font-size: 0.88rem;
+				color: rgba(var(--gray-dark), 0.76);
+			}
+			.content {
+				padding: 1rem;
+			}
+			.state-card,
+			.version-card {
+				padding: 1rem 1.1rem;
+				border-radius: 18px;
+				border: 1px solid rgba(var(--gray), 0.12);
+				background: white;
+			}
+			.state-grid {
+				display: grid;
+				grid-template-columns: repeat(2, minmax(0, 1fr));
+				gap: 0.85rem;
+				margin-bottom: 1rem;
+			}
+			.state-card .label {
+				display: block;
+				font-size: 0.78rem;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				color: rgba(var(--gray-dark), 0.62);
+				margin-bottom: 0.3rem;
+			}
+			.state-card .value {
+				font-size: 1rem;
+				color: rgb(var(--black));
+			}
+			.detail-header {
+				display: flex;
+				align-items: flex-start;
+				justify-content: space-between;
+				gap: 1rem;
+				margin-bottom: 1rem;
+			}
+			.detail-header p {
+				margin: 0.45rem 0 0;
+				color: rgba(var(--gray-dark), 0.84);
+			}
+			.detail-actions {
+				display: flex;
+				gap: 0.75rem;
+				flex-wrap: wrap;
+			}
+			.action-pill {
+				display: inline-flex;
+				align-items: center;
+				padding: 0.55rem 0.9rem;
+				border-radius: 999px;
+				background: #e7eee1;
+				color: #355029;
+				font-size: 0.9rem;
+				text-decoration: none;
+			}
+			.version-list {
+				display: grid;
+				gap: 0.75rem;
+			}
+			.version-card h3 {
+				font-size: 1rem;
+				margin-bottom: 0.4rem;
+			}
+			.version-meta {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.9rem;
+				font-size: 0.9rem;
+				color: rgba(var(--gray-dark), 0.78);
+			}
+			.empty,
+			.loading,
+			.error {
+				padding: 1.2rem;
+				border-radius: 18px;
+				background: rgba(255, 255, 255, 0.88);
+				border: 1px dashed rgba(var(--gray), 0.24);
+			}
+			.error {
+				background: rgba(255, 242, 240, 0.95);
+				border-style: solid;
+				border-color: rgba(171, 73, 60, 0.18);
+				color: #8b352c;
+			}
+			@media (max-width: 900px) {
+				.shell {
+					grid-template-columns: 1fr;
+				}
+				.state-grid {
+					grid-template-columns: 1fr;
+				}
+				:global(main.save-console-page) {
+					width: calc(100% - 1rem);
+					padding-top: 1rem;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main class="save-console-page">
+			<section class="hero panel">
+				<span class="eyebrow">Protected Console</span>
+				<h1>Minecraft 存档控制台</h1>
+				<p>
+					这里先展示第一阶段的只读控制台：查看当前用户、可访问世界、最新版本和历史版本。
+					上传和下载写操作会在下一步接进来。
+				</p>
+			</section>
+
+			<section class="shell">
+				<aside class="sidebar panel">
+					<div class="user-card" id="user-card">
+						<strong>加载中</strong>
+						<span>正在读取当前用户信息...</span>
+					</div>
+					<h2>世界列表</h2>
+					<div class="world-list" id="world-list">
+						<div class="loading">正在加载世界列表...</div>
+					</div>
+				</aside>
+
+				<section class="content panel">
+					<div id="detail-root">
+						<div class="empty">
+							先选择一个世界。这里会显示它的最新版本、基础信息和版本历史。
+						</div>
+					</div>
+				</section>
+			</section>
+		</main>
+		<Footer />
+		<script type="module">
+			const worldListEl = document.getElementById('world-list');
+			const detailRootEl = document.getElementById('detail-root');
+			const userCardEl = document.getElementById('user-card');
+			const state = {
+				worlds: [],
+				selectedSlug: new URL(window.location.href).searchParams.get('world') || null
+			};
+
+			const formatDate = (value) => {
+				if (!value) return '暂无';
+				return new Date(value).toLocaleString('zh-CN', {
+					year: 'numeric',
+					month: '2-digit',
+					day: '2-digit',
+					hour: '2-digit',
+					minute: '2-digit'
+				});
+			};
+
+			const formatSize = (size) => {
+				if (typeof size !== 'number') return '未知';
+				const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+				let value = size;
+				let index = 0;
+				while (value >= 1024 && index < units.length - 1) {
+					value /= 1024;
+					index += 1;
+				}
+				return `${value.toFixed(index === 0 ? 0 : 2)} ${units[index]}`;
+			};
+
+			const fetchJson = async (url) => {
+				const response = await fetch(url, { credentials: 'same-origin' });
+				const payload = await response.json();
+				if (!response.ok || !payload.ok) {
+					throw new Error(payload?.error?.message || '请求失败');
+				}
+				return payload.data;
+			};
+
+			const renderUser = (userData) => {
+				userCardEl.innerHTML = `
+					<strong>${userData.user.displayName}</strong>
+					<span>角色：${userData.user.role}</span>
+				`;
+			};
+
+			const renderWorldList = () => {
+				if (state.worlds.length === 0) {
+					worldListEl.innerHTML = '<div class="empty">当前没有可访问的世界。</div>';
+					return;
+				}
+
+				worldListEl.innerHTML = state.worlds
+					.map(
+						(world) => `
+							<button class="world-item ${world.slug === state.selectedSlug ? 'active' : ''}" data-world-slug="${world.slug}" type="button">
+								<strong>${world.displayName}</strong>
+								<span>${world.latestVersion ? `最新上传：${formatDate(world.latestVersion.uploadedAt)}` : '还没有版本'}</span>
+							</button>
+						`
+					)
+					.join('');
+
+				worldListEl.querySelectorAll('[data-world-slug]').forEach((button) => {
+					button.addEventListener('click', () => {
+						const slug = button.getAttribute('data-world-slug');
+						if (!slug) return;
+						state.selectedSlug = slug;
+						const nextUrl = new URL(window.location.href);
+						nextUrl.searchParams.set('world', slug);
+						window.history.replaceState({}, '', nextUrl);
+						renderWorldList();
+						void loadWorldDetail(slug);
+					});
+				});
+			};
+
+			const renderDetail = (worldData, versionsData) => {
+				const world = worldData.world;
+				const latest = worldData.latestVersion;
+				const versions = versionsData.versions || [];
+				detailRootEl.innerHTML = `
+					<div class="detail-header">
+						<div>
+							<h2>${world.displayName}</h2>
+							<p>${world.description || '这个世界还没有补充说明。'}</p>
+						</div>
+						<div class="detail-actions">
+							<span class="action-pill">只读阶段</span>
+							<span class="action-pill">保留 ${world.retentionCount} 个版本</span>
+						</div>
+					</div>
+
+					<div class="state-grid">
+						<div class="state-card">
+							<span class="label">最新版本</span>
+							<div class="value">${latest ? latest.filename : '暂无'}</div>
+						</div>
+						<div class="state-card">
+							<span class="label">最新上传时间</span>
+							<div class="value">${latest ? formatDate(latest.uploadedAt) : '暂无'}</div>
+						</div>
+						<div class="state-card">
+							<span class="label">存档大小</span>
+							<div class="value">${latest ? formatSize(latest.size) : '暂无'}</div>
+						</div>
+						<div class="state-card">
+							<span class="label">可访问用户</span>
+							<div class="value">${Array.isArray(world.allowedUsers) ? world.allowedUsers.join(', ') : '未配置'}</div>
+						</div>
+					</div>
+
+					<h2>版本历史</h2>
+					<div class="version-list">
+						${
+							versions.length > 0
+								? versions
+										.map(
+											(version) => `
+												<article class="version-card">
+													<h3>${version.filename}</h3>
+													<div class="version-meta">
+														<span>时间：${formatDate(version.uploadedAt)}</span>
+														<span>大小：${formatSize(version.size)}</span>
+														<span>来源：${version.sourceType || '未知'}</span>
+														<span>上传者：${version.uploadedBy || '未知'}</span>
+													</div>
+												</article>
+											`
+										)
+										.join('')
+								: '<div class="empty">这个世界还没有历史版本。</div>'
+						}
+					</div>
+				`;
+			};
+
+			const renderError = (message) => {
+				detailRootEl.innerHTML = `<div class="error">${message}</div>`;
+			};
+
+			const loadWorldDetail = async (slug) => {
+				detailRootEl.innerHTML = '<div class="loading">正在加载世界详情...</div>';
+				try {
+					const [worldData, versionsData] = await Promise.all([
+						fetchJson(`/api/saves/worlds/${encodeURIComponent(slug)}`),
+						fetchJson(`/api/saves/worlds/${encodeURIComponent(slug)}/versions`)
+					]);
+					renderDetail(worldData, versionsData);
+				} catch (error) {
+					renderError(error instanceof Error ? error.message : '加载世界详情失败');
+				}
+			};
+
+			const bootstrap = async () => {
+				try {
+					const [meData, worldsData] = await Promise.all([
+						fetchJson('/api/saves/me'),
+						fetchJson('/api/saves/worlds')
+					]);
+					renderUser(meData);
+					state.worlds = worldsData.worlds || [];
+					if (!state.selectedSlug && state.worlds[0]) {
+						state.selectedSlug = state.worlds[0].slug;
+					}
+					renderWorldList();
+					if (state.selectedSlug) {
+						await loadWorldDetail(state.selectedSlug);
+					}
+				} catch (error) {
+					userCardEl.innerHTML = `
+						<strong>加载失败</strong>
+						<span>${error instanceof Error ? error.message : '未知错误'}</span>
+					`;
+					worldListEl.innerHTML = '<div class="error">无法连接存档控制台 API。</div>';
+					renderError('当前无法读取世界数据，请检查 `/api/saves` 服务和 nginx 反代配置。');
+				}
+			};
+
+			void bootstrap();
+		</script>
+	</body>
+</html>

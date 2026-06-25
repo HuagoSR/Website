@@ -1,0 +1,20 @@
+[Unit]
+Description=Minecraft Save Console API
+After=network.target
+
+[Service]
+Type=simple
+User=huagosr
+WorkingDirectory=/home/huagosr/my_website/save-console-api
+Environment=SAVE_CONSOLE_HOST=127.0.0.1
+Environment=SAVE_CONSOLE_PORT=4312
+Environment=SAVE_CONSOLE_DATA_ROOT=/home/huagosr/mc-cloud
+Environment=SAVE_CONSOLE_DEFAULT_USER=huagosr
+Environment=SAVE_CONSOLE_DEFAULT_OWNER=huagosr
+Environment=SAVE_CONSOLE_PUBLIC_BASE=/api/saves
+ExecStart=/usr/bin/node /home/huagosr/my_website/save-console-api/src/server.mjs
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
