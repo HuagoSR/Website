@@ -1,0 +1,275 @@
+---
+import { getCollection } from 'astro:content';
+import BaseHead from '../components/BaseHead.astro';
+import Footer from '../components/Footer.astro';
+import { SITE_DESCRIPTION, SITE_TITLE } from '../consts';
+
+const posts = (await getCollection('blog')).sort(
+	(a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf(),
+);
+
+const [featuredPost, ...otherPosts] = posts;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<BaseHead title={SITE_TITLE} description={SITE_DESCRIPTION} />
+		<style>
+			:global(body) {
+				background: #f6f4ef;
+			}
+			:global(main.homepage) {
+				width: 100%;
+				max-width: none;
+				margin: 0;
+				padding: 0;
+			}
+			.homepage {
+				min-height: 100vh;
+			}
+			.hero {
+				position: relative;
+				min-height: 100svh;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				padding: 2rem;
+				background:
+					linear-gradient(to bottom, rgba(18, 24, 20, 0.18), rgba(18, 24, 20, 0.4)),
+					url('/media/home/hero.png') center center / cover no-repeat;
+				transform: scale(calc(1 + (var(--hero-progress, 0) * 0.04)));
+				filter: blur(calc(var(--hero-progress, 0) * 10px));
+				opacity: calc(1 - (var(--hero-progress, 0) * 0.55));
+				transform-origin: center center;
+				will-change: transform, filter, opacity;
+			}
+			.hero::after {
+				content: '';
+				position: absolute;
+				left: 0;
+				right: 0;
+				bottom: -1px;
+				height: 28vh;
+				background: linear-gradient(to bottom, rgba(246, 244, 239, 0), #f6f4ef 88%);
+				pointer-events: none;
+			}
+			.hero-overlay {
+				position: absolute;
+				inset: 0;
+				background: rgba(245, 242, 236, calc(var(--hero-progress, 0) * 0.72));
+				pointer-events: none;
+			}
+			.topbar {
+				position: absolute;
+				top: 0.9rem;
+				left: 0;
+				right: 0;
+				display: flex;
+				justify-content: center;
+				padding: 0 1rem;
+				z-index: 1;
+				opacity: calc(0.72 - (var(--hero-progress, 0) * 0.28));
+				transition: opacity 0.2s ease;
+			}
+			.topbar nav {
+				display: flex;
+				gap: 0.9rem;
+				padding: 0.5rem 0.85rem;
+				border-radius: 999px;
+				background: rgba(255, 255, 255, 0.08);
+				backdrop-filter: blur(6px);
+			}
+			.topbar a {
+				color: rgba(255, 255, 255, 0.88);
+				text-decoration: none;
+				font-size: 0.88rem;
+				letter-spacing: 0.02em;
+			}
+			.hero-title {
+				position: relative;
+				z-index: 1;
+				text-align: center;
+				color: white;
+				transform: translateY(calc(var(--hero-progress, 0) * -48px));
+				opacity: calc(1 - (var(--hero-progress, 0) * 0.75));
+				will-change: transform, opacity;
+			}
+			.hero-title h1 {
+				margin: 0;
+				font-size: clamp(2.8rem, 7vw, 6rem);
+				font-weight: 700;
+				letter-spacing: 0.02em;
+				color: white;
+				text-shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+			}
+			.content {
+				width: min(760px, calc(100% - 2rem));
+				margin: -4.5rem auto 0;
+				position: relative;
+				z-index: 1;
+				padding-bottom: 5rem;
+				transform: translateY(calc((1 - var(--hero-progress, 0)) * 18px));
+			}
+			.section {
+				margin-bottom: 2.4rem;
+			}
+			.section h2 {
+				margin-bottom: 1.1rem;
+				font-size: 1rem;
+				font-weight: 700;
+				letter-spacing: 0.03em;
+			}
+			.featured-post {
+				padding: 1.1rem 0 1.5rem;
+				border-top: 1px solid rgba(var(--gray), 0.16);
+				border-bottom: 1px solid rgba(var(--gray), 0.16);
+			}
+			.featured-post img {
+				display: block;
+				width: 100%;
+				height: auto;
+				aspect-ratio: 16 / 9;
+				object-fit: cover;
+				border-radius: 14px;
+				margin-bottom: 1rem;
+			}
+			.post-meta {
+				margin: 0 0 0.45rem;
+				font-size: 0.9rem;
+				color: rgb(var(--gray));
+			}
+			.featured-post h3 {
+				margin: 0 0 0.75rem;
+				font-size: clamp(1.7rem, 4vw, 2.3rem);
+				line-height: 1.08;
+			}
+			.featured-post h3 a {
+				color: rgb(var(--black));
+				text-decoration: none;
+			}
+			.featured-post p {
+				margin: 0;
+			}
+			.other-posts {
+				margin-top: 1.4rem;
+				display: grid;
+				gap: 0.85rem;
+			}
+			.other-post {
+				display: flex;
+				align-items: baseline;
+				gap: 1rem;
+				padding-bottom: 0.85rem;
+				border-bottom: 1px solid rgba(var(--gray), 0.12);
+			}
+			.other-post time {
+				min-width: 5.8rem;
+				font-size: 0.9rem;
+				color: rgb(var(--gray));
+			}
+			.other-post a {
+				color: rgb(var(--black));
+				text-decoration: none;
+			}
+			.more {
+				margin-top: 1rem;
+			}
+			.more a {
+				color: rgb(var(--black));
+				text-decoration: none;
+				border-bottom: 1px solid rgba(var(--gray), 0.4);
+			}
+			@media (max-width: 780px) {
+				.topbar nav {
+					gap: 0.7rem;
+					padding: 0.45rem 0.7rem;
+				}
+				.hero-title h1 {
+					font-size: 3rem;
+				}
+				.content {
+					margin-top: -3rem;
+					width: calc(100% - 1rem);
+				}
+				.other-post {
+					flex-direction: column;
+					gap: 0.2rem;
+				}
+			}
+		</style>
+	</head>
+	<body class="homepage">
+		<main class="homepage">
+			<section class="hero" id="home-hero">
+				<div class="hero-overlay"></div>
+				<div class="topbar">
+					<nav>
+						<a href="/">首页</a>
+						<a href="/blog">博客</a>
+						<a href="/about">关于</a>
+						<a href="https://github.com/huagosr" target="_blank" rel="noreferrer">GitHub</a>
+					</nav>
+				</div>
+				<div class="hero-title">
+					<h1>HuagoSR的主页</h1>
+				</div>
+			</section>
+
+			<section class="content">
+				<div class="section">
+					<h2>最近文章</h2>
+					{
+						featuredPost && (
+							<article class="featured-post">
+								<img
+									src={featuredPost.data.heroImage?.src ?? '/media/bambucup/battle-shot-2.png'}
+									alt={featuredPost.data.title}
+								/>
+								<p class="post-meta">
+									{featuredPost.data.pubDate.toLocaleDateString('zh-CN')}
+								</p>
+								<h3>
+									<a href={`/blog/${featuredPost.id}/`}>{featuredPost.data.title}</a>
+								</h3>
+								<p>{featuredPost.data.description}</p>
+							</article>
+						)
+					}
+					{
+						otherPosts.length > 0 && (
+							<div class="other-posts">
+								{
+									otherPosts.map((post) => (
+										<div class="other-post">
+											<time>{post.data.pubDate.toLocaleDateString('zh-CN')}</time>
+											<a href={`/blog/${post.id}/`}>{post.data.title}</a>
+										</div>
+									))
+								}
+							</div>
+						)
+					}
+					<p class="more"><a href="/blog">查看全部文章</a></p>
+				</div>
+			</section>
+		</main>
+		<Footer />
+		<script>
+			const root = document.documentElement;
+			const hero = document.getElementById('home-hero');
+
+			const updateHero = () => {
+				if (!hero) return;
+				const rect = hero.getBoundingClientRect();
+				const height = Math.max(rect.height, 1);
+				const progress = Math.min(Math.max(-rect.top / (height * 0.9), 0), 1);
+				root.style.setProperty('--hero-progress', progress.toString());
+			};
+
+			updateHero();
+			window.addEventListener('scroll', updateHero, { passive: true });
+			window.addEventListener('resize', updateHero);
+		</script>
+	</body>
+</html>
