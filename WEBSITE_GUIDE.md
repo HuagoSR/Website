@@ -661,6 +661,7 @@ docker exec secure-nginx nginx -s reload
 5. 增加“归档”页面
 6. 增加友链或联系方式
 7. 给首页加更细腻的动效
+8. 给网站增加一个受保护的 Minecraft 存档管理台
 
 但我建议节奏是：
 
@@ -709,6 +710,8 @@ powershell -ExecutionPolicy Bypass -File .\deploy.ps1
   一键部署脚本
 - `WEBSITE_GUIDE.md`
   当前这份说明文档
+- `MINECRAFT_SAVE_CONSOLE_PLAN.md`
+  Minecraft 存档控制台的规划文档
 - `src/pages/index.astro`
   首页
 - `src/pages/blog/index.astro`
@@ -730,10 +733,28 @@ powershell -ExecutionPolicy Bypass -File .\deploy.ps1
   当前上线网站文件
 - `/home/huagosr/my_website/html_backup`
   上一次站点备份
+- `/home/huagosr/mc-cloud`
+  Minecraft 存档版本目录，不应和网站静态文件混放
 
 ---
 
-## 17. 最后一句
+## 17. Minecraft 存档控制台规划入口
+
+如果你后面准备把这个网站扩展成“受保护的 Minecraft 存档管理台”，先看：
+
+- `MINECRAFT_SAVE_CONSOLE_PLAN.md`
+
+这份规划文档主要回答这些问题：
+
+- 为什么这个功能不能只靠静态页面完成
+- 为什么它应该是博客旁边的小型受保护应用
+- 多世界、权限、上传、下载应该怎么拆
+- 浏览器选本地存档文件夹这件事有哪些现实限制
+- 最合适的分期实现顺序是什么
+
+---
+
+## 18. 最后一句
 
 这个网站现在已经不是“模板站”了，而是一个真正上线、可以继续写、可以继续改、也可以继续成长的个人站。
 
